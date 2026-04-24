@@ -1,0 +1,30 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light dark;
+}
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  background: #f8f6f3;
+  color: #0a0a0a;
+  font-feature-settings: "cv11", "ss01", "tnum";
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  background:
+    radial-gradient(ellipse 800px 400px at 20% 0%, rgba(255, 180, 100, 0.10), transparent 60%),
+    radial-gradient(ellipse 600px 400px at 80% 100%, rgba(240, 160, 120, 0.08), transparent 60%),
+    #f8f6f3;
+}
+
+/* Clean up the native PDF viewer background inside the SourcePanel
+   so the inner iframe looks anchored rather than floating. */
+iframe[title="cited PDF"] {
+  background: #d6d1ca;
+}

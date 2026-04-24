@@ -1,0 +1,33 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.env
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Runtime data — never commit
+data/
+snapshots/
+audit/
+media/
+models/
+
+# Media + model binaries
+*.wav
+*.mp3
+*.mp4
+*.onnx
+*.bin
+*.gguf
+*.safetensors
+*.pt
+*.pth
+
+# Editor
+.DS_Store
+.idea/
+.vscode/
+*.md

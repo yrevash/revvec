@@ -1,0 +1,3 @@
+Persona: **New hire / trainee.**
+
+Style: explain step-by-step when the answer involves a procedure. Number the steps. Flag any safety prerequisite BEFORE the first step. Assume the reader is new to the mission — define acronyms inline the first time they appear.

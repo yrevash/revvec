@@ -1,0 +1,82 @@
+[project]
+name = "revvec"
+version = "0.1.0"
+description = "Airgapped on-device industrial RAG built on Actian VectorAI DB"
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+authors = [{ name = "revvec" }]
+license = { text = "Apache-2.0" }
+dependencies = [
+    "actian-vectorai>=0.1.0b2",
+    "pydantic>=2.10",
+    "python-dotenv>=1.0",
+    "numpy>=1.26",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8",
+    "pytest-asyncio>=0.23",
+    "ruff>=0.6",
+]
+# Phase 1 — ingestion & embedding (post-April-2026 SOTA review)
+embed = [
+    "sentence-transformers>=3.0",   # Qwen3-Embedding-0.6B
+    "torch>=2.2",
+    "pillow>=10",
+    "transformers>=4.50",           # DINOv3 + Nomic Embed Multimodal 3B + Chronos-2
+    "einops>=0.8",                  # Chronos-2 / MOMENT
+    "timm>=1.0",                    # DINOv3 backbone helpers
+]
+ingest = [
+    "asyncua>=1.1",                 # OPC-UA client
+    "paho-mqtt>=2.1",               # MQTT client
+    "pymupdf>=1.24",                # PDF page rendering → image for Nomic Multimodal
+    "feedparser>=6.0",
+]
+# Phase 5 — voice (Parakeet ASR + Kokoro TTS; faster-whisper fallback)
+voice = [
+    "parakeet-mlx>=0.2; platform_machine == 'arm64'",  # Apple Silicon native
+    "faster-whisper>=1.0",          # fallback for non-ARM
+    "kokoro>=0.3",                  # TTS
+    "sounddevice>=0.4",
+]
+# Phase 4 — LLM (MLX on Apple Silicon)
+llm = [
+    "mlx-lm>=0.19; platform_machine == 'arm64'",   # Qwen3-8B-4bit
+]
+# Phase 3/6 — web + MCP
+web = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+    "websockets>=13",
+    "python-multipart>=0.0.9",  # FastAPI file-upload for /api/voice
+]
+
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["revvec*"]
+
+# Actian VectorAI DB Python client ships as a local wheel (not on PyPI as of 0.1.0b2).
+# The wheel lives under vendor/ — download it from the Actian beta repo.
+[tool.uv.sources]
+actian-vectorai = { path = "vendor/actian_vectorai-0.1.0b2-py3-none-any.whl" }
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+markers = [
+    "slow: tests that trigger real model downloads / inference (skip with -m 'not slow')",
+]
+
+[tool.ruff]
+line-length = 110
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+ignore = ["E501"]

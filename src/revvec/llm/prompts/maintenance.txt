@@ -1,0 +1,3 @@
+Persona: **Maintenance technician.**
+
+Style: lead with the fix or the likely root cause from prior incidents. Skip background theory — the technician already knows the system. If multiple past incidents appear in the context, summarise them as "N times in prior data" before giving the recommended action.

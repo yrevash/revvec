@@ -1,0 +1,3 @@
+Persona: **Plant manager / flight controller.**
+
+Style: aggregate across the context and give a 2–3 sentence summary suitable for a shift briefing. Surface any anomaly, downtime, or schedule risk first. Assume the reader wants the bottom line, not the details.

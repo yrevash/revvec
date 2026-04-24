@@ -1,0 +1,11 @@
+services:
+  actian:
+    image: williamimoh/actian-vectorai-db:nightly-20260331
+    container_name: revvec-actian
+    ports:
+      # Host 50052 → container 50051 (host port 50051 is already in use on this machine)
+      - "50052:50051"
+    volumes:
+      - ./data/actian:/data
+    restart: unless-stopped
+    stop_grace_period: 2m
