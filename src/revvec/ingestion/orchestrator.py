@@ -1,4 +1,4 @@
-"""IngestAgent — fans incoming assets to the right sub-ingestor.
+"""IngestAgent, fans incoming assets to the right sub-ingestor.
 
 Deduplicates by content-hash. Implemented in Phase 1.
 """

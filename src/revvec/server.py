@@ -153,7 +153,7 @@ async def source_meta(entity_id: str) -> dict[str, Any]:
     c = _ensure_client()
     pts = c.points.get(config.COLLECTION, ids=[entity_id], with_payload=True)
     if not pts:
-        # Fall back: some UUIDs returned via the search API are str(int) — try filter lookup
+        # Fall back: some UUIDs returned via the search API are str(int), try filter lookup
         f = FilterBuilder().must(Field("entity_id").eq(entity_id)).build()
         dummy = [0.0] * config.DIM_TEXT
         hits = c.points.search(config.COLLECTION, vector=dummy, using="text_vec", limit=1, filter=f, with_payload=True)
@@ -253,7 +253,9 @@ def _actian_block(
 
 # When the top retrieved hit's semantic similarity is below this, we bypass
 # grounded generation and fall through to LLMAgent.generate_general().
-GENERAL_FALLBACK_THRESHOLD = 0.50
+# Lowered from 0.50 → 0.20 so voice transcripts (which embed slightly
+# differently than typed text) still take the grounded RAG path.
+GENERAL_FALLBACK_THRESHOLD = 0.20
 
 # Obvious non-query inputs that always get the general path, regardless of score.
 _GREETINGS: frozenset[str] = frozenset({
@@ -279,7 +281,7 @@ async def query_endpoint(req: QueryRequest) -> dict[str, Any]:
     timings: dict[str, float] = {}
     t_total = time.perf_counter()
 
-    # 1) cache lookup — disabled when follow-up history OR a user_profile is
+    # 1) cache lookup, disabled when follow-up history OR a user_profile is
     # present, so the cache doesn't bleed a stale one-off answer into a
     # continuing conversation or across users with different contexts.
     has_history = bool(req.history)
@@ -341,11 +343,11 @@ async def query_endpoint(req: QueryRequest) -> dict[str, Any]:
     )
 
     if weak_retrieval:
-        # Fall through to general-knowledge mode — clearly labelled "(from model knowledge)"
+        # Fall through to general-knowledge mode, clearly labelled "(from model knowledge)"
         t0 = time.perf_counter()
         history_dicts = [h.model_dump() for h in (req.history or [])]
         result = llm.generate_general(
-            req.persona, req.query_text, max_tokens=140, history=history_dicts,
+            req.persona, req.query_text, max_tokens=2048, history=history_dicts,
             user_profile=profile,
         )
         timings["generate"] = (time.perf_counter() - t0) * 1000
@@ -386,7 +388,7 @@ async def query_endpoint(req: QueryRequest) -> dict[str, Any]:
     history_dicts = [h.model_dump() for h in (req.history or [])]
     result = llm.generate(
         persona=req.persona, question=req.query_text, chunks=hits,
-        max_tokens=160, history=history_dicts, user_profile=profile,
+        max_tokens=2048, history=history_dicts, user_profile=profile,
     )
     timings["generate"] = (time.perf_counter() - t0) * 1000
 
@@ -435,7 +437,7 @@ async def query_endpoint(req: QueryRequest) -> dict[str, Any]:
     return resp
 
 
-# ─── /api/voice (stretch — wired but not yet exercised via UI) ──────────────
+# ─── /api/voice (stretch, wired but not yet exercised via UI) ──────────────
 
 
 @app.post("/api/voice")
@@ -565,7 +567,7 @@ async def voice_stream(req: LiveVoiceRequest) -> StreamingResponse:
             if done_event.is_set() and (time.perf_counter() - started) >= total_sec:
                 break
 
-        # Final pass — transcribe the whole buffer once more for stability
+        # Final pass, transcribe the whole buffer once more for stability
         with buf_lock:
             if not buf_chunks:
                 yield _sse({"event": "final", "text": "", "asr_ms": 0})
@@ -598,7 +600,7 @@ async def voice_live(req: LiveVoiceRequest) -> dict[str, Any]:
     """Record `seconds` directly from the system mic via sounddevice, then
     transcribe + answer + synthesize. Avoids WKWebView's getUserMedia gate.
 
-    The recording itself is sync — Python sounddevice blocks for the duration.
+    The recording itself is sync, Python sounddevice blocks for the duration.
     That's fine: the Tauri front-end shows a "recording…" UI for that interval.
     """
     import base64
@@ -638,7 +640,7 @@ async def voice_live(req: LiveVoiceRequest) -> dict[str, Any]:
     }
 
 
-# ─── /api/query/stream — SSE token stream ──────────────────────────────────
+# ─── /api/query/stream, SSE token stream ──────────────────────────────────
 
 
 def _sse(event: dict[str, Any]) -> bytes:
@@ -665,7 +667,7 @@ async def query_stream(req: QueryRequest) -> StreamingResponse:
         c = _ensure_client()
         embedder = get_embedder()
 
-        # cache lookup — skip when we have history or a user_profile.
+        # cache lookup, skip when we have history or a user_profile.
         has_history = bool(req.history)
         profile = _profile_dict(req.user_profile)
         has_profile = profile is not None
@@ -754,12 +756,12 @@ async def query_stream(req: QueryRequest) -> StreamingResponse:
         stream = (
             llm.stream_generate_general(
                 req.persona, req.query_text,
-                max_tokens=140, history=history_dicts, user_profile=profile,
+                max_tokens=2048, history=history_dicts, user_profile=profile,
             )
             if weak else
             llm.stream_generate_grounded(
                 req.persona, req.query_text, hits,
-                max_tokens=160, history=history_dicts, user_profile=profile,
+                max_tokens=2048, history=history_dicts, user_profile=profile,
             )
         )
         final_answer = ""
@@ -790,7 +792,7 @@ async def query_stream(req: QueryRequest) -> StreamingResponse:
             "actian": actian,
         })
 
-        # cache + audit — skip cache write for multi-turn or when a user
+        # cache + audit, skip cache write for multi-turn or when a user
         # profile is set (the answer was tailored to this user).
         if not weak and final_answer and not has_history and not has_profile:
             try:
@@ -817,7 +819,7 @@ async def query_stream(req: QueryRequest) -> StreamingResponse:
     )
 
 
-# ─── /api/admin/* — audit + compliance endpoints ────────────────────────────
+# ─── /api/admin/*, audit + compliance endpoints ────────────────────────────
 
 
 class ForgetRequest(BaseModel):
@@ -880,7 +882,7 @@ async def admin_snapshot() -> dict[str, Any]:
 async def admin_forget(req: ForgetRequest) -> dict[str, Any]:
     """Forget an entity: pre-snapshot, cascade-delete, then audit-log."""
     c = _ensure_client()
-    # Pre-snapshot — so we can prove what was erased
+    # Pre-snapshot, so we can prove what was erased
     snap_ok = False
     try:
         snap_ok = bool(c.vde.save_snapshot(config.COLLECTION))
@@ -920,6 +922,32 @@ async def admin_forget(req: ForgetRequest) -> dict[str, Any]:
         "ok": ok,
     })
     return {"ok": ok, "deleted_count": before, "pre_snapshot_ok": snap_ok}
+
+
+@app.post("/api/admin/cache/clear")
+async def admin_cache_clear() -> dict[str, Any]:
+    """Delete every answer_cache point so subsequent queries hit fresh LLM
+    generation. Also writes an audit row capturing the operator action."""
+    c = _ensure_client()
+    f = FilterBuilder().must(Field("entity_type").eq("answer_cache")).build()
+    try:
+        before = c.points.count(config.COLLECTION, filter=f)
+    except Exception:  # noqa: BLE001
+        before = -1
+    try:
+        c.points.delete(config.COLLECTION, filter=f)
+        ok = True
+        err = None
+    except Exception as e:  # noqa: BLE001
+        ok = False
+        err = repr(e)[:200]
+    state.audit.record({
+        "action": "cache_clear",
+        "deleted_count": before,
+        "ok": ok,
+        "error": err,
+    })
+    return {"ok": ok, "deleted_count": before, "error": err}
 
 
 # ─── entry ──────────────────────────────────────────────────────────────────

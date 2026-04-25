@@ -1,4 +1,4 @@
-"""MemoryAgent — the single writer into Actian.
+"""MemoryAgent, the single writer into Actian.
 
 Every ingestor funnels through this. It enforces the payload schema (no
 undeclared fields leak in), batches writes, and retries on transient gRPC
@@ -25,7 +25,7 @@ from revvec.memory.schema import ensure_collection
 log = logging.getLogger(__name__)
 
 
-# Payload fields — declared in one place, referenced from every ingestor.
+# Payload fields, declared in one place, referenced from every ingestor.
 PAYLOAD_REQUIRED: frozenset[str] = frozenset({
     "entity_type",
     "entity_id",
@@ -52,7 +52,7 @@ PAYLOAD_OPTIONAL: frozenset[str] = frozenset({
     "text_preview",
     "audit_prev_hash",
     "audit_row_hash",
-    "query",          # for fetch-originating entries — what search produced them
+    "query",          # for fetch-originating entries, what search produced them
     "nasa_id",        # for Image Library entries
     "title",
     # ClusterAgent pattern bookkeeping (Phase 2)
@@ -72,11 +72,11 @@ ENTITY_TYPES: frozenset[str] = frozenset({
     "sop_page", "equipment_photo", "defect_photo", "sensor_window",
     "alarm_incident", "incident_report", "shift_note", "training_clip",
     "voice_note", "answer_cache",
-    "candidate_pattern",  # Phase 2 — ClusterAgent, not yet promoted
-    "active_pattern",     # Phase 2 — ClusterAgent, ≥3 signals confirmed
-    "archived_pattern",   # Phase 2 — state transition after 90-day dormancy
-    "ntrs_document",      # Phase 1 — NTRS paper metadata ingested as text_vec
-    "nasa_image_caption", # Phase 1 — Image Library caption as text_vec
+    "candidate_pattern",  # Phase 2, ClusterAgent, not yet promoted
+    "active_pattern",     # Phase 2, ClusterAgent, ≥3 signals confirmed
+    "archived_pattern",   # Phase 2, state transition after 90-day dormancy
+    "ntrs_document",      # Phase 1, NTRS paper metadata ingested as text_vec
+    "nasa_image_caption", # Phase 1, Image Library caption as text_vec
 })
 
 MODALITIES: frozenset[str] = frozenset({"text", "image", "sensor", "voice", "structured"})
@@ -113,7 +113,7 @@ class MemoryAgent:
         """Idempotently create the collection if missing, and always open it.
 
         After an Actian server restart the collection files persist on disk but
-        the in-memory handle is closed — `collections.exists()` lies (returns
+        the in-memory handle is closed, `collections.exists()` lies (returns
         False) and `points.count()` raises CollectionNotFoundError. Explicit
         `vde.open_collection()` is required to remount the collection state.
         """
@@ -122,7 +122,7 @@ class MemoryAgent:
             created = ensure_collection(self.client, self.collection)
         except Exception as e:  # noqa: BLE001
             log.warning("ensure_collection raised %r; attempting vde.open_collection", e)
-        # Always try to open — cheap and idempotent
+        # Always try to open, cheap and idempotent
         try:
             self.client.vde.open_collection(self.collection)
         except Exception as e:  # noqa: BLE001
@@ -143,7 +143,7 @@ class MemoryAgent:
             raise PayloadValidationError(f"unknown modality: {mod}")
         unknown = set(payload.keys()) - _ALL_PAYLOAD_KEYS
         if unknown:
-            # Not fatal — we drop unknown keys silently to stop bad ingestors
+            # Not fatal, we drop unknown keys silently to stop bad ingestors
             # from bloating the payload schema. Logged once per call.
             log.warning("dropping unknown payload keys: %s", sorted(unknown))
             payload = {k: v for k, v in payload.items() if k in _ALL_PAYLOAD_KEYS}
@@ -153,7 +153,7 @@ class MemoryAgent:
 
     def upsert(self, points: Sequence[PointStruct]) -> int:
         """Upsert a batch of validated points. Returns the count written."""
-        # Validate in one pass — fail fast before we hit Actian.
+        # Validate in one pass, fail fast before we hit Actian.
         clean: list[PointStruct] = []
         for p in points:
             p.payload = self._validate_payload(p.payload)

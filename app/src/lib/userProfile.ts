@@ -25,7 +25,7 @@ export function saveProfile(p: UserProfile): void {
   try {
     localStorage.setItem(KEY, JSON.stringify(p));
   } catch {
-    // localStorage full or disabled — silently ignore
+    // localStorage full or disabled, silently ignore
   }
 }
 

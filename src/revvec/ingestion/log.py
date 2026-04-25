@@ -1,4 +1,4 @@
-"""LogIngestor — ingests structured JSON / JSONL / CSV rows into text_vec.
+"""LogIngestor, ingests structured JSON / JSONL / CSV rows into text_vec.
 
 First real customer: the fetcher's `data/fetch_log.jsonl`, which records every
 NTRS PDF and Image Library asset we downloaded. For each entry we create ONE
@@ -148,7 +148,7 @@ class LogIngestor:
         title = e.get("title", "").strip()
         query = e.get("query", "").strip()
         if title and query:
-            return f"{title} — search query: {query}"
+            return f"{title}, search query: {query}"
         if title:
             return title
         return e.get("nasa_id", "") or e.get("url", "")

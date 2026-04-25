@@ -1,4 +1,4 @@
-"""ClusterAgent — candidate → active pattern promotion.
+"""ClusterAgent, candidate → active pattern promotion.
 
 Three object classes, same state-machine:
 
@@ -135,7 +135,7 @@ class ClusterAgent:
             existing_payload = existing.payload
             # Equipment-class gate: only merge if same equipment_id (when provided)
             if equipment_id and existing_payload.get("equipment_id") not in (None, "", equipment_id):
-                # different equipment class — skip merge, create new
+                # different equipment class, skip merge, create new
                 return self._create_candidate(vec, vector_name, kind, now_ms, source_entity_id, equipment_id)
 
             new_count = int(existing_payload.get("signal_count", 0)) + 1
@@ -146,7 +146,7 @@ class ClusterAgent:
                 was_promoted = True
                 log.info("promoted %s pattern %s → active (%d signals)", kind, existing.id, new_count)
 
-            # Update scalar fields only — Actian's set_payload on list-typed values
+            # Update scalar fields only, Actian's set_payload on list-typed values
             # crashes the server in this build. Update type + count + recency only.
             self.client.points.set_payload(
                 self.collection,
@@ -200,7 +200,7 @@ class ClusterAgent:
             "title": f"{kind} pattern (candidate)",
             "text_preview": f"{kind} pattern candidate, 1 signal so far",
         }
-        # Populate ALL named vectors — Actian's set_payload asserts every declared
+        # Populate ALL named vectors, Actian's set_payload asserts every declared
         # named vector exists on the point (assertion fires otherwise). Dummies
         # for unused slots; real vector for the one that matters.
         vectors_dict = {

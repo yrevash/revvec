@@ -1,10 +1,10 @@
-"""LLMAgent — Qwen3-4B-Instruct-2507-4bit via MLX.
+"""LLMAgent, Qwen3-4B-Instruct-2507-4bit via MLX.
 
 Apple Silicon native, ~3.5 GB active, ~60-90 tok/s on M3. The -Instruct-2507
 refresh (Aug 2025) gives us the highest IFEval score of any mlx-community
-model under 6 GB — critical for honoring the "[source:N]" citation format.
+model under 6 GB, critical for honoring the "[source:N]" citation format.
 
-Grounded generation ONLY — system prompt forbids fabrication and requires
+Grounded generation ONLY, system prompt forbids fabrication and requires
 citations.
 """
 from __future__ import annotations
@@ -178,7 +178,7 @@ class LLMAgent:
         question: str,
         chunks: Sequence[Any],
         *,
-        max_tokens: int = 160,
+        max_tokens: int = 2048,
         temperature: float = 0.0,
         history: Sequence[dict[str, str]] | None = None,
         user_profile: dict[str, str] | None = None,
@@ -230,7 +230,7 @@ class LLMAgent:
         question: str,
         chunks: Sequence[Any],
         *,
-        max_tokens: int = 160,
+        max_tokens: int = 2048,
         history: Sequence[dict[str, str]] | None = None,
         user_profile: dict[str, str] | None = None,
     ):
@@ -278,11 +278,11 @@ class LLMAgent:
         persona: str,
         question: str,
         *,
-        max_tokens: int = 140,
+        max_tokens: int = 2048,
         history: Sequence[dict[str, str]] | None = None,
         user_profile: dict[str, str] | None = None,
     ):
-        """Streaming variant of generate_general — same delta/done contract."""
+        """Streaming variant of generate_general, same delta/done contract."""
         from mlx_lm import stream_generate as mlx_stream_generate
 
         model, tok = self._load()
@@ -290,7 +290,7 @@ class LLMAgent:
             "You are revvec, an on-device industrial assistant. The local knowledge base "
             "did not contain information relevant to the user's question, so answer briefly "
             "from general knowledge. Begin your reply with '(from model knowledge)' so the "
-            "user knows it isn't grounded in their documents. Be concise — 1–2 sentences — "
+            "user knows it isn't grounded in their documents. Be concise, 1–2 sentences, "
             "and if the question seems like small talk, greet the user and list a few kinds "
             "of questions revvec CAN answer (e.g., Perseverance MEDA, Mars 2020 EDL, Apollo "
             "anomalies, CMAPSS engine prognostics).",
@@ -319,7 +319,7 @@ class LLMAgent:
         persona: str,
         question: str,
         *,
-        max_tokens: int = 160,
+        max_tokens: int = 2048,
         history: Sequence[dict[str, str]] | None = None,
         user_profile: dict[str, str] | None = None,
     ) -> GenerationResult:
@@ -335,7 +335,7 @@ class LLMAgent:
             "You are revvec, an on-device industrial assistant. The local knowledge base "
             "did not contain information relevant to the user's question, so answer briefly "
             "from general knowledge. Begin your reply with '(from model knowledge)' so the "
-            "user knows it isn't grounded in their documents. Be concise — 1–2 sentences — "
+            "user knows it isn't grounded in their documents. Be concise, 1–2 sentences, "
             "and if the question seems like small talk, greet the user and list a few kinds "
             "of questions revvec CAN answer (e.g., Perseverance MEDA, Mars 2020 EDL, Apollo "
             "anomalies, CMAPSS engine prognostics).",
@@ -359,7 +359,10 @@ class LLMAgent:
 
     # ─── citation extraction ────────────────────────────────────────────────
 
-    _CITE_RE = re.compile(r"\[source:\s*(\d+)\s*\]")
+    # Match the whole [source:...] block, handles `[source:1]`, `[source:1, 2]`,
+    # `[source:1, source:2]`, etc. We extract every digit inside.
+    _CITE_BLOCK_RE = re.compile(r"\[source:[^\]]*\]")
+    _DIGIT_RE = re.compile(r"\d+")
 
     @classmethod
     def _extract_citations(
@@ -375,14 +378,15 @@ class LLMAgent:
         idx_lookup = {n: (eid, title, prev) for (n, eid, title, prev) in index_map}
         citations: list[Citation] = []
         seen: set[int] = set()
-        for m in cls._CITE_RE.finditer(answer):
-            n = int(m.group(1))
-            if n in seen:
-                continue
-            seen.add(n)
-            if n in idx_lookup:
-                eid, title, prev = idx_lookup[n]
-                citations.append(Citation(index=n, entity_id=eid, title=title, preview=prev))
-            else:
-                citations.append(Citation(index=n, entity_id="", title="", preview=""))
+        for block in cls._CITE_BLOCK_RE.finditer(answer):
+            for dm in cls._DIGIT_RE.finditer(block.group(0)):
+                n = int(dm.group(0))
+                if n in seen:
+                    continue
+                seen.add(n)
+                if n in idx_lookup:
+                    eid, title, prev = idx_lookup[n]
+                    citations.append(Citation(index=n, entity_id=eid, title=title, preview=prev))
+                else:
+                    citations.append(Citation(index=n, entity_id="", title="", preview=""))
         return citations

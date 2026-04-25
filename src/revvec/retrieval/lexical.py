@@ -72,7 +72,7 @@ def extract_keywords(text: str) -> set[str]:
             codes.add(m.group(0).upper())
 
     # Pass 2: remaining words (codes stay in the string but will be re-tokenised;
-    # since codes contain digits, they'd normally not match stopwords anyway —
+    # since codes contain digits, they'd normally not match stopwords anyway ,
     # we UPPER them in the code-set so when we then lowercase + filter we
     # don't double-count them).
     normalised = re.sub(r"[^\w\s-]", " ", text.lower())

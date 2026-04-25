@@ -16,7 +16,7 @@ export function extractHighlightPhrase(preview: string): string {
   t = t.replace(/\n+/g, " ").replace(/\s+/g, " ").trim();
 
   // Find the longest "clean" substring with at least 3 words
-  const chunks = t.split(/[.!?]|\s[—–-]\s/);
+  const chunks = t.split(/[.!?]|\s[,–-]\s/);
   let best = "";
   for (const raw of chunks) {
     const c = raw.trim();

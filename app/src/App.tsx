@@ -71,6 +71,7 @@ export default function App() {
   const [listening, setListening] = useState(false);
   const [profile, setProfile] = useState<UserProfile>(() => loadProfile());
   const [profileOpen, setProfileOpen] = useState(false);
+  const [skipCache, setSkipCache] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
@@ -169,7 +170,13 @@ export default function App() {
 
     try {
       await streamQuery(
-        { query_text: text, persona: priorChat.persona, history, user_profile: userProfile },
+        {
+          query_text: text,
+          persona: priorChat.persona,
+          history,
+          user_profile: userProfile,
+          use_cache: !skipCache,
+        },
         {
           onStart: (m) =>
             updateMessage(priorChat.id, asstMsg.id, {
@@ -231,17 +238,61 @@ export default function App() {
     if (finalText.trim()) await submit(finalText);
   }
 
-  const suggestions = [
-    "How does MEDA measure atmospheric pressure?",
-    "SuperCam analysis of the Maaz formation",
-    "Mars 2020 entry descent landing",
-    "Apollo lunar module anomaly",
-  ];
+  // Persona-keyed suggestions, each grounded in the actual NASA Mars 2020
+  // corpus so retrieval has real chunks to cite.
+  const SUGGESTIONS: Record<Persona, string[]> = {
+    new_hire: [
+      "What is the Perseverance rover's mission?",
+      "How does SuperCam work on Mars?",
+      "Explain MEDA in simple terms",
+      "What instruments are on Perseverance?",
+    ],
+    maintenance: [
+      "MEDA atmospheric pressure sensor performance",
+      "CMAPSS engine sensor anomaly signatures",
+      "Mars 2020 entry descent landing telemetry",
+      "Perseverance thermal subsystem operations",
+    ],
+    quality: [
+      "SuperCam analysis of the Maaz formation",
+      "SHERLOC and WATSON imaging in Jezero Crater",
+      "Igneous rock characterization on Mars",
+      "Abrasion target verification procedures",
+    ],
+    plant_manager: [
+      "Mars 2020 mission performance summary",
+      "Marshall Space Flight Center R&T highlights",
+      "Perseverance science return overview",
+      "Technology areas in human spaceflight",
+    ],
+  };
+
+  const SUBTITLES: Record<Persona, string> = {
+    new_hire: "Get oriented · everything stays on this device",
+    maintenance: "Diagnose, triage, repeat · everything stays on this device",
+    quality: "Verify, cite, confirm · everything stays on this device",
+    plant_manager: "Plan and decide · everything stays on this device",
+  };
+
+  const suggestions = SUGGESTIONS[persona] ?? SUGGESTIONS.maintenance;
+  const subtitle = SUBTITLES[persona] ?? SUBTITLES.maintenance;
 
   const showSuggestions = active && active.messages.length === 0 && !err && srv?.ok;
 
   return (
     <div className="min-h-screen flex">
+      {/* Top-of-window drag strip. Covers only the LEFT sidebar width so the
+          right-side source panel and main header buttons stay clickable.
+          Tauri 2 macOS needs this because the traffic-light area otherwise
+          has no drag surface in titleBarStyle:Overlay. */}
+      <div
+        data-tauri-drag-region
+        className="fixed top-0 left-0 w-[260px] h-[36px] z-[100]"
+      />
+      <div
+        data-tauri-drag-region
+        className="fixed top-0 left-[260px] right-[60px] h-[28px] z-[100]"
+      />
       <ChatSidebar
         chats={chats}
         activeId={activeId}
@@ -287,9 +338,7 @@ export default function App() {
               <div className="text-sm font-medium text-ink/80 mb-1">
                 Ask as a {persona.replace("_", " ")}
               </div>
-              <div className="text-xs text-muted mb-5">
-                Everything stays on this device
-              </div>
+              <div className="text-xs text-muted mb-5">{subtitle}</div>
               <div className="flex flex-wrap justify-center gap-2">
                 {suggestions.map((s) => (
                   <button
@@ -345,12 +394,21 @@ export default function App() {
               </button>
             </div>
             <div className="flex items-center justify-between text-[10px] text-muted font-mono">
-              <span>
+              <span className="flex items-center gap-3">
                 {listening
                   ? "recording · releases automatically after 5s"
                   : active && active.messages.length > 0
-                  ? `${active.messages.length} message${active.messages.length === 1 ? "" : "s"} · history is included in follow-ups`
+                  ? `${active.messages.length} message${active.messages.length === 1 ? "" : "s"} · history included`
                   : "start a new conversation"}
+                <label className="flex items-center gap-1 cursor-pointer hover:text-ink/80 transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={skipCache}
+                    onChange={(e) => setSkipCache(e.target.checked)}
+                    className="w-3 h-3 accent-accent cursor-pointer"
+                  />
+                  skip cache
+                </label>
               </span>
               <span className="flex items-center gap-1.5 flex-shrink-0">
                 <span className="w-1 h-1 rounded-full bg-green-500" />

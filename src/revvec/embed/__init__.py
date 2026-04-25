@@ -1,1 +1,1 @@
-"""Embedding subsystem — unified multi-model service."""
+"""Embedding subsystem, unified multi-model service."""

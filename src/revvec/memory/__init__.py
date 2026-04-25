@@ -1,1 +1,1 @@
-"""Memory subsystem — writes, schema, snapshots."""
+"""Memory subsystem, writes, schema, snapshots."""

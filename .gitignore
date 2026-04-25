@@ -8,14 +8,11 @@ venv/
 .ruff_cache/
 .mypy_cache/
 
-# Runtime data — never commit
 data/
 snapshots/
 audit/
 media/
 models/
-
-# Media + model binaries
 *.wav
 *.mp3
 *.mp4
@@ -25,9 +22,10 @@ models/
 *.safetensors
 *.pt
 *.pth
-
-# Editor
 .DS_Store
 .idea/
 .vscode/
-*.md
+md/
+demo/
+node_modules/
+ops/

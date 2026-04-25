@@ -1,14 +1,14 @@
-"""EmbedAgent — unified multi-model embedding service.
+"""EmbedAgent, unified multi-model embedding service.
 
 Every sub-ingestor calls in here; nobody else instantiates an embedding model.
 Models are lazy-loaded singletons with an optional TTL-unload (added in Phase 8
 if the 16 GB RAM budget pushes back).
 
 Slots:
-  text_vec (1024d)   — Qwen/Qwen3-Embedding-0.6B (MRL)
-  page_vec (3584d)   — nomic-ai/nomic-embed-multimodal-3b  (Phase 1 later)
-  photo_vec (1024d)  — facebook/dinov3-vitl16-pretrain-lvd1689m  (Phase 1 later)
-  sensor_vec (512d)  — amazon/chronos-2  (Phase 1 later / Phase 2)
+  text_vec (1024d)  , Qwen/Qwen3-Embedding-0.6B (MRL)
+  page_vec (3584d)  , nomic-ai/nomic-embed-multimodal-3b  (Phase 1 later)
+  photo_vec (1024d) , facebook/dinov3-vitl16-pretrain-lvd1689m  (Phase 1 later)
+  sensor_vec (512d) , amazon/chronos-2  (Phase 1 later / Phase 2)
 """
 from __future__ import annotations
 

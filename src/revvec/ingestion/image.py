@@ -1,4 +1,4 @@
-"""ImageIngestor — JPG/PNG → DINOv3 ViT-L → photo_vec (1024d).
+"""ImageIngestor, JPG/PNG → DINOv3 ViT-L → photo_vec (1024d).
 
 Consumes `data/fetch_log.jsonl` entries where source_type in {nasa_images,
 direct_image, local_dir-image}. Reads each cached image, embeds via the
@@ -95,7 +95,7 @@ class ImageIngestor:
             seen_in_file.add(h)
             deduped.append(e)
 
-        # Persistent dedup — different namespace than LogIngestor's text_vec
+        # Persistent dedup, different namespace than LogIngestor's text_vec
         # for the same sha256: mark as entity_type=equipment_photo so we can
         # re-ingest the same asset for the photo_vec path without collision.
         candidates = [(e["sha256"] + ":photo", "equipment_photo") for e in deduped]

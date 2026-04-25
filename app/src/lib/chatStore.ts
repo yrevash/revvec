@@ -50,7 +50,7 @@ export function saveChats(chats: Chat[]): void {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(chats));
   } catch {
-    /* quota exceeded — drop oldest and retry */
+    /* quota exceeded, drop oldest and retry */
     const pruned = chats.slice(0, 40);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(pruned));
   }
@@ -105,7 +105,7 @@ export interface HistoryTurn {
 
 /** Build history to send to the LLM. Takes last K turns, capped at `maxChars`
  * characters total. Oldest turns are dropped first. The current user message
- * is NOT included — the caller adds it as `query_text`. */
+ * is NOT included, the caller adds it as `query_text`. */
 export function buildHistory(
   chat: Chat,
   opts: { maxTurns?: number; maxChars?: number } = {},

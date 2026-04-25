@@ -1,4 +1,4 @@
-"""SensorIngestor — CMAPSS run-to-failure trajectories → Chronos-Bolt → sensor_vec.
+"""SensorIngestor, CMAPSS run-to-failure trajectories → Chronos-Bolt → sensor_vec.
 
 CMAPSS format (space-separated):
   col 0   : engine unit number (1..N)
@@ -6,13 +6,13 @@ CMAPSS format (space-separated):
   cols 2-4: operating settings (3 values)
   cols 5-25: sensor readings (21 values, labelled sensor_1 .. sensor_21)
 
-For each engine we take the LAST `window_size` cycles — the final degradation
-phase leading to failure — and embed one or more sensor channels. Each channel
+For each engine we take the LAST `window_size` cycles, the final degradation
+phase leading to failure, and embed one or more sensor channels. Each channel
 yields a separate sensor_vec point (entity_type=sensor_window) so the
 ClusterAgent (Phase 2b) can promote recurring failure fingerprints.
 
 Sensor column 7 (HPC outlet temperature) is one of the classic predictive
-signals in the CMAPSS literature — we default to it.
+signals in the CMAPSS literature, we default to it.
 """
 from __future__ import annotations
 
@@ -113,7 +113,7 @@ class SensorIngestor:
                     "equipment_id": f"turbofan_{subdataset}_{engine_id:03d}",
                     "severity": 4,  # end-of-life is max severity
                     "text_preview": (
-                        f"Engine {engine_id} ({subdataset}) — final {self.window_size} "
+                        f"Engine {engine_id} ({subdataset}), final {self.window_size} "
                         f"cycles of sensor_{ch} trajectory"
                     ),
                     "title": f"CMAPSS {subdataset} engine {engine_id:03d} sensor_{ch}",

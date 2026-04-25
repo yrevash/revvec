@@ -1,1 +1,1 @@
-"""Retrieval subsystem — three-tier: Actian RRF prefetch → hybrid re-rank → cache."""
+"""Retrieval subsystem, three-tier: Actian RRF prefetch → hybrid re-rank → cache."""

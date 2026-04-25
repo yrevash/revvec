@@ -1,1 +1,1 @@
-"""Cluster subsystem — candidate → active promotion (SignalWeave-style)."""
+"""Cluster subsystem, candidate → active promotion (SignalWeave-style)."""

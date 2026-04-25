@@ -1,4 +1,4 @@
-"""SopIngestor — PDF → ColPali-style page-as-image + extracted text.
+"""SopIngestor, PDF → ColPali-style page-as-image + extracted text.
 
 Each PDF page becomes ONE Actian point (entity_type=sop_page) with BOTH named
 vectors populated:
@@ -6,7 +6,7 @@ vectors populated:
   - photo_vec: DINOv2 ViT-L over the page rendered as an image (150 DPI)
 
 Why both: ColPali's key insight is that a document page is fundamentally visual
-— figures, diagrams, tables, equations, and layout carry meaning that plain
+, figures, diagrams, tables, equations, and layout carry meaning that plain
 text extraction throws away. DINOv2 on the rendered page captures all of that
 visual information as a single 1024d vector. Pairing it with text_vec lets
 retrieval fuse both signals via Actian server-side RRF.
@@ -63,7 +63,7 @@ class SopIngestor:
         embedder: EmbedAgent | None = None,
         dedup: DedupStore | None = None,
         max_pages_per_pdf: int = 80,
-        page_batch: int = 4,   # smaller batch — DINOv2 needs more memory than pure text
+        page_batch: int = 4,   # smaller batch, DINOv2 needs more memory than pure text
     ) -> None:
         self.memory = memory
         self.embedder = embedder or get_embedder()
@@ -174,7 +174,7 @@ class SopIngestor:
                     "state": "active",
                     "role_visibility": ["new_hire", "maintenance", "quality", "plant_manager"],
                     "text_preview": text[:512],
-                    "title": f"{title} — page {page_num}",
+                    "title": f"{title}, page {page_num}",
                     "query": entry.get("query", ""),
                     "media_sha256": entry["sha256"],
                 }

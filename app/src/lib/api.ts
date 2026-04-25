@@ -104,7 +104,7 @@ export async function voiceQuery(
   return r.json();
 }
 
-/** Backend-mic voice path — avoids WKWebView getUserMedia permission issues.
+/** Backend-mic voice path, avoids WKWebView getUserMedia permission issues.
  * Server records via sounddevice for `seconds`, then runs the full pipeline. */
 export async function voiceLive(
   persona: Persona,
@@ -125,7 +125,7 @@ export interface VoiceStreamHandlers {
   onError?: (err: Error) => void;
 }
 
-/** SSE streaming mic path — partial transcripts fire every ~0.6s while recording,
+/** SSE streaming mic path, partial transcripts fire every ~0.6s while recording,
  * then a single `final` event with the full transcript. */
 export async function voiceStream(
   seconds: number,
@@ -176,6 +176,10 @@ export async function voiceStream(
   return finalText;
 }
 
+export async function clearCache(): Promise<{ ok: boolean; deleted_count: number; error: string | null }> {
+  return jsonFetch("/api/admin/cache/clear", { method: "POST" });
+}
+
 export async function sourceMeta(entityId: string): Promise<SourceMeta> {
   return jsonFetch<SourceMeta>(`/api/source/${entityId}/meta`);
 }
@@ -217,6 +221,7 @@ export async function streamQuery(
     persona: Persona;
     history?: HistoryTurn[];
     user_profile?: UserProfile;
+    use_cache?: boolean;
   },
   handlers: StreamHandlers,
   signal?: AbortSignal,

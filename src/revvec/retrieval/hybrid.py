@@ -1,8 +1,8 @@
-"""RetrievalAgent — three-tier retrieval.
+"""RetrievalAgent, three-tier retrieval.
 
 Stage 1: server-side multi-vector prefetch + RRF fusion (Actian)
 Stage 2: client-side hybrid re-rank (0.7 · semantic + 0.3 · lexical)
-Stage 3: answer-cache shortcut (Phase 4 — deferred until LLMAgent exists)
+Stage 3: answer-cache shortcut (Phase 4, deferred until LLMAgent exists)
 
 The one public entry is `RetrievalAgent.retrieve(query_text, …)`.
 """
@@ -66,7 +66,7 @@ class RetrievalAgent:
         persona: str | None = None,
         time_range_ms: tuple[int, int] | None = None,
         equipment_id: str | None = None,
-        image_query: Any = None,          # PIL.Image.Image — import deferred
+        image_query: Any = None,          # PIL.Image.Image, import deferred
         sensor_window: np.ndarray | None = None,
         limit: int = 6,
         prefetch_limit_text: int = 40,
@@ -81,7 +81,7 @@ class RetrievalAgent:
 
         # NOTE on Actian filter behaviour in this build: after heavy upsert/
         # delete churn (Phases 2–5), server-side search(..., filter=...) starts
-        # returning 0 hits across all values of entity_type / state — even
+        # returning 0 hits across all values of entity_type / state, even
         # though count(..., filter=...) returns correct numbers. Root cause
         # looks like stale payload-index state after server restarts (the
         # dynamic create_field_index RPC that would fix this is UNIMPLEMENTED
@@ -113,7 +113,7 @@ class RetrievalAgent:
         if not prefetch:
             return []
 
-        # Stage 1: Actian — either direct search (1 prefetch) or RRF fusion (2+)
+        # Stage 1: Actian, either direct search (1 prefetch) or RRF fusion (2+)
         # Big over-fetch (200+) so post-filter has material to work with.
         t_stage1 = time.perf_counter()
         over_fetch = max(200, limit * 40)
@@ -174,7 +174,7 @@ class RetrievalAgent:
             ))
 
         # If everything filtered out, fall back to ranking Stage-1 hits by
-        # their raw semantic score — better than returning nothing.
+        # their raw semantic score, better than returning nothing.
         if not ranked:
             log.info("hybrid re-rank dropped all hits; falling back to pure-semantic top-k")
             for h in hits[:limit]:

@@ -53,13 +53,13 @@ export function Inspector({ result }: { result: QueryResponse }) {
       </button>
       {open && (
         <div className="px-3 pb-3 pt-1 space-y-1.5 text-muted leading-relaxed">
-          <Row k="vectors" v={a.vectors.join(" + ") || "—"} />
+          <Row k="vectors" v={a.vectors.join(" + ") || ","} />
           <Row
             k="hits"
             v={
               a.hits_used > 0
                 ? `${a.hits_used}${a.top_score !== null ? ` · top score ${a.top_score.toFixed(3)}` : ""}`
-                : "—"
+                : ","
             }
           />
           <Row

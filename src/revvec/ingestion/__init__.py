@@ -1,1 +1,1 @@
-"""Ingestion subsystem — one sub-ingestor per modality."""
+"""Ingestion subsystem, one sub-ingestor per modality."""

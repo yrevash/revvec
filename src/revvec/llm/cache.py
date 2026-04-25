@@ -1,4 +1,4 @@
-"""Answer cache — repeat queries served without re-running the LLM.
+"""Answer cache, repeat queries served without re-running the LLM.
 
 Writes every generated answer back into Actian as `entity_type=answer_cache`
 with the question's text_vec as the key. A new query with cosine ≥ 0.95 to a
@@ -82,8 +82,8 @@ class AnswerCache:
     ) -> str:
         """Store a fresh answer as entity_type=answer_cache (state=candidate).
 
-        All three named vectors are populated — text_vec with the real query
-        embedding, photo_vec and sensor_vec with zeros — because Actian's
+        All three named vectors are populated, text_vec with the real query
+        embedding, photo_vec and sensor_vec with zeros, because Actian's
         set_payload (used for future thumbs-up promotion) crashes when any
         declared named vector is missing on a point.
         """

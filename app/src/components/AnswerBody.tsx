@@ -9,7 +9,7 @@ import type { Citation } from "../lib/api";
  *  - `[source:N]` markers inline replaced with a clickable orange pill
  *  - leading `(general)` / `(from model knowledge)` tag rendered as a subtle badge
  *
- * We replace [source:N] BEFORE passing to ReactMarkdown — we swap each marker
+ * We replace [source:N] BEFORE passing to ReactMarkdown, we swap each marker
  * for a placeholder `§§CITE:N§§` so markdown doesn't interpret the brackets,
  * then we do a post-render pass in each text node via a components override.
  * That keeps the pills clickable without turning the whole thing into ad-hoc
@@ -17,7 +17,10 @@ import type { Citation } from "../lib/api";
  */
 
 const PLACEHOLDER_RE = /§§CITE:(\d+)§§/g;
-const SOURCE_RE = /\[source:\s*(\d+)\s*\]/g;
+// Match the whole [source:...] block (handles `[source:1]`, `[source:1, 2]`,
+// `[source:1, source:2]`, etc.). We extract every digit inside to render
+// one pill per cited source.
+const SOURCE_BLOCK_RE = /\[source:[^\]]*\]/g;
 
 export function AnswerBody({
   answer,
@@ -37,9 +40,16 @@ export function AnswerBody({
     return m;
   }, [citations]);
 
-  // Inject placeholders so markdown doesn't mangle "[source:2]"
+  // Inject placeholders so markdown doesn't mangle "[source:2]". Each digit
+  // inside the [source:...] block becomes its own pill, so a model emitting
+  // "[source:1, source:2]" yields TWO clickable pills, not one literal.
   const preprocessed = useMemo(
-    () => answer.replace(SOURCE_RE, (_m, n) => `§§CITE:${n}§§`),
+    () =>
+      answer.replace(SOURCE_BLOCK_RE, (m) => {
+        const nums = m.match(/\d+/g) ?? [];
+        if (nums.length === 0) return m;
+        return nums.map((n) => `§§CITE:${n}§§`).join("");
+      }),
     [answer],
   );
 
@@ -114,7 +124,10 @@ export function AnswerBody({
         {preprocessed}
       </ReactMarkdown>
       {streaming && (
-        <span className="inline-block w-2 h-[1.1em] ml-[2px] bg-accent align-middle animate-pulse" />
+        <span
+          aria-hidden
+          className="inline-block w-[2px] h-[0.95em] ml-[3px] bg-ink/70 align-[-2px] animate-pulse rounded-sm"
+        />
       )}
     </div>
   );

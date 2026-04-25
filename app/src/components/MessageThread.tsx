@@ -43,21 +43,36 @@ function MessageView({
     );
   }
 
-  // Assistant — finalized answer gets the full card (timings, citations).
+  // Assistant, finalized answer gets the full card (timings, citations).
   if (message.result && !message.streaming) {
     return <AnswerCard result={message.result} onOpenSource={onOpenSource} />;
   }
 
-  // Streaming or in-flight: minimal container, no "STREAMING" chrome — let the
-  // text (and the inline cursor) speak for itself.
+  // Streaming or in-flight. Two visual states:
+  //   1. Pre-token (empty content): show a "thinking" indicator with animated
+  //      dots. This is the gap between onStart and the first onDelta.
+  //   2. Mid-stream: render the accumulating markdown body with a thin
+  //      pulsing caret at the end.
+  const empty = !(message.content && message.content.trim());
   return (
     <div className="bg-surface-card rounded-2xl shadow-card px-7 py-6">
-      <AnswerBody
-        answer={message.content || ""}
-        citations={[]}
-        onOpenSource={onOpenSource}
-        streaming={!!message.streaming}
-      />
+      {empty ? (
+        <div className="flex items-center gap-2.5 text-muted text-[13px] py-1">
+          <span className="font-medium tracking-wide">thinking</span>
+          <span className="flex gap-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-accent/70 animate-bounce [animation-delay:-0.3s]" />
+            <span className="w-1.5 h-1.5 rounded-full bg-accent/70 animate-bounce [animation-delay:-0.15s]" />
+            <span className="w-1.5 h-1.5 rounded-full bg-accent/70 animate-bounce" />
+          </span>
+        </div>
+      ) : (
+        <AnswerBody
+          answer={message.content || ""}
+          citations={[]}
+          onOpenSource={onOpenSource}
+          streaming={!!message.streaming}
+        />
+      )}
     </div>
   );
 }

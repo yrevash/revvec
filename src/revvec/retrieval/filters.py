@@ -26,7 +26,7 @@ DEFAULT_CONTENT_ENTITY_TYPES: tuple[str, ...] = (
     "training_clip",
     "voice_note",
     "alarm_incident",
-    # nasa_image_caption and ntrs_document intentionally EXCLUDED — both are
+    # nasa_image_caption and ntrs_document intentionally EXCLUDED, both are
     # title-only points (no body text). They outrank sop_page (which has the
     # real PDF body text) on short queries, then the grounded LLM has nothing
     # to cite and says "not found". sop_page carries the same source URL +
@@ -52,7 +52,7 @@ def build_filter(
     """
     fb = FilterBuilder()
 
-    # Persona gate — DISABLED for Phase 3.
+    # Persona gate, DISABLED for Phase 3.
     # role_visibility is stored as a list in payload; Actian's SDK in this build
     # doesn't support list-contains filtering (any_of/eq both return 0 hits
     # against a list field). Rather than re-ingest with one-bool-per-persona
@@ -97,7 +97,7 @@ def build_filter(
     return fb.build()
 
 
-# Pre-baked filters for the four personas — saves one call-site's worth of
+# Pre-baked filters for the four personas, saves one call-site's worth of
 # boilerplate in every retrieval codepath.
 
 PERSONA_DEFAULTS = {

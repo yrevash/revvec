@@ -1,1 +1,1 @@
-"""Voice subsystem — faster-whisper ASR + Piper TTS."""
+"""Voice subsystem, faster-whisper ASR + Piper TTS."""

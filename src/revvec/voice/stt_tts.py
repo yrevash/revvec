@@ -1,11 +1,11 @@
-"""VoiceAgent — Whisper-large-v3-turbo (MLX) for ASR + Kokoro-82M for TTS.
+"""VoiceAgent, Whisper-large-v3-turbo (MLX) for ASR + Kokoro-82M for TTS.
 
 Design goals:
   - CPU-friendly TTS (Kokoro is ~300 MB, Apache-2.0, MOS 4.2 on TTS Arena)
   - Apple Silicon native ASR via MLX (~5× faster than whisper-large-v3)
   - One method per job: transcribe(wav) → str, speak(text) → wav, record(sec) → wav
 
-No streaming yet — Phase 5 covers batch calls. Phase 6 adds WebSocket streaming
+No streaming yet, Phase 5 covers batch calls. Phase 6 adds WebSocket streaming
 when the UI lands.
 """
 from __future__ import annotations

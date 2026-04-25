@@ -36,7 +36,7 @@ export function MicButton({
   async function go() {
     if (state !== "idle" || disabled) return;
 
-    // UI countdown — purely cosmetic, mirrors the server's record duration.
+    // UI countdown, purely cosmetic, mirrors the server's record duration.
     setState("recording");
     setRemaining(seconds);
     const startedAt = Date.now();

@@ -89,7 +89,7 @@ export function UserProfilePanel({
 
         <div className="px-6 py-4 text-[12.5px] text-muted leading-relaxed border-b border-surface-deep/60">
           Tell revvec who you are. The assistant will tailor every answer to your role
-          and background — never inventing facts beyond your local sources, but
+          and background, never inventing facts beyond your local sources, but
           emphasising parts most useful to you.
           <br />
           <span className="text-[11px] text-muted/80">

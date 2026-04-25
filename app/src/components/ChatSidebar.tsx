@@ -1,4 +1,6 @@
-import { Plus, Trash2, MessageSquare, User } from "lucide-react";
+import { useState } from "react";
+import { Plus, Trash2, MessageSquare, User, Database, Check } from "lucide-react";
+import { clearCache } from "../lib/api";
 import type { Chat } from "../lib/chatStore";
 
 function formatAgo(ts: number): string {
@@ -27,6 +29,26 @@ export function ChatSidebar({
   profileActive: boolean;
 }) {
   const sorted = [...chats].sort((a, b) => b.updatedAt - a.updatedAt);
+  const [cacheStatus, setCacheStatus] = useState<{ tone: "ok" | "err"; text: string } | null>(null);
+  const [clearing, setClearing] = useState(false);
+
+  async function handleClearCache() {
+    if (clearing) return;
+    setClearing(true);
+    setCacheStatus(null);
+    try {
+      const r = await clearCache();
+      setCacheStatus({
+        tone: "ok",
+        text: `Cleared ${r.deleted_count} cached answer${r.deleted_count === 1 ? "" : "s"}`,
+      });
+    } catch (e) {
+      setCacheStatus({ tone: "err", text: `Failed: ${String(e).slice(0, 60)}` });
+    } finally {
+      setClearing(false);
+      setTimeout(() => setCacheStatus(null), 3500);
+    }
+  }
 
   return (
     <aside className="w-[260px] flex-shrink-0 bg-surface-deep/40 border-r border-surface-deep/80 flex flex-col">
@@ -131,6 +153,33 @@ export function ChatSidebar({
             </span>
           )}
         </button>
+        <button
+          onClick={handleClearCache}
+          disabled={clearing}
+          className="w-full flex items-center gap-2 px-3 py-2.5 text-[12px] text-ink/80 hover:bg-surface-card/60 border-t border-surface-deep/60 transition-colors disabled:opacity-50"
+          title="clear answer cache so the next query regenerates"
+        >
+          <Database size={13} className="text-muted" />
+          <span className="flex-1 text-left">
+            {clearing ? "Clearing…" : "Clear answer cache"}
+          </span>
+        </button>
+        {cacheStatus && (
+          <div
+            className={
+              "px-3 py-2 text-[11px] flex items-center gap-1.5 border-t border-surface-deep/60 animate-in fade-in slide-in-from-bottom-1 duration-200 " +
+              (cacheStatus.tone === "ok"
+                ? "bg-emerald-50 text-emerald-800"
+                : "bg-red-50 text-red-700")
+            }
+            role="status"
+          >
+            {cacheStatus.tone === "ok" ? (
+              <Check size={11} className="flex-shrink-0" />
+            ) : null}
+            <span className="truncate">{cacheStatus.text}</span>
+          </div>
+        )}
         <div className="px-3 py-1.5 text-[10px] text-muted font-mono border-t border-surface-deep/60">
           {sorted.length} {sorted.length === 1 ? "chat" : "chats"} · local only
         </div>
