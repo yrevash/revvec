@@ -10,6 +10,12 @@ import {
   Zap,
   Github,
   CheckCircle2,
+  Users,
+  UserCircle,
+  Search,
+  Quote,
+  History,
+  RefreshCcw,
 } from "lucide-react";
 
 export default function Home() {
@@ -31,10 +37,11 @@ export default function Home() {
           <Logo />
           <span className="font-display text-2xl tracking-tight">revvec</span>
         </div>
-        <div className="hidden md:flex items-center gap-7 text-[13.5px] text-ink/70">
+        <div className="hidden md:flex items-center gap-6 text-[13.5px] text-ink/70">
           <a href="#why" className="hover:text-ink transition-colors">why on-device</a>
           <a href="#how" className="hover:text-ink transition-colors">how it works</a>
-          <a href="#stack" className="hover:text-ink transition-colors">stack</a>
+          <a href="#screens" className="hover:text-ink transition-colors">in the app</a>
+          <a href="#features" className="hover:text-ink transition-colors">features</a>
           <a href="#compliance" className="hover:text-ink transition-colors">compliance</a>
         </div>
         <a
@@ -139,10 +146,10 @@ export default function Home() {
             ))}
           </div>
 
-          <div className="mt-14 grid md:grid-cols-3 gap-4">
+          <div className="mt-14 grid md:grid-cols-2 lg:grid-cols-4 gap-4">
             <BigClaim
               icon={<Database size={16} />}
-              kicker="Actian VectorAI DB"
+              kicker="Actian"
               title="3 named vectors / point"
               body="A PDF page is one record holding both a text vector AND an image vector with a shared payload. No four-database federation."
             />
@@ -150,13 +157,19 @@ export default function Home() {
               icon={<Zap size={16} />}
               kicker="Server-side fusion"
               title="RRF in one round-trip"
-              body="Reciprocal Rank Fusion across all named vectors via points.query(prefetch=…). ~15 ms for stage 1 on a 1,940-point corpus."
+              body="Reciprocal Rank Fusion across all named vectors via points.query(prefetch). About 15 ms for stage 1 on a 1,940 point corpus."
+            />
+            <BigClaim
+              icon={<Sparkles size={16} />}
+              kicker="Stage 2 rerank"
+              title="Industrial-code BM25"
+              body="Okapi BM25 over the candidate pool with a tokenizer that keeps codes like SOP-ME-112 and sol 1214 intact. 0.7 cosine + 0.3 BM25."
             />
             <BigClaim
               icon={<ShieldCheck size={16} />}
               kicker="Hash chain"
               title="Tamper-evident audit"
-              body="Every query, cache hit, and forget-request lands in a SHA-256-chained JSONL log. 6/6 tamper tests pass."
+              body="Every query, cache hit, and forget-request lands in a SHA-256 chained JSONL log. 6 of 6 tamper tests pass."
             />
           </div>
         </div>
@@ -191,6 +204,92 @@ export default function Home() {
                 <div className="text-[11px] font-mono text-white/40 uppercase tracking-wide">
                   {s.licence}
                 </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ─── In the app ─── */}
+      <section id="screens" className="relative z-10 border-t border-ink/8 bg-white/40">
+        <div className="max-w-6xl mx-auto px-6 md:px-10 py-24">
+          <SectionLabel icon={<Sparkles size={11} />}>Inside the app</SectionLabel>
+          <h2 className="font-display text-4xl md:text-6xl leading-[1.05] tracking-tight max-w-4xl mb-3">
+            Every answer shows its work.
+          </h2>
+          <p className="text-[17px] text-ink/70 max-w-2xl mb-14">
+            An Actian inspector sits below every response. One click reveals the exact path, vectors, latency, and primitive used. The database is never a black box.
+          </p>
+
+          <div className="grid lg:grid-cols-2 gap-6">
+            <ScreenCard
+              src="/screens/perseverance_rover_bme_new.png"
+              title="Persona aware grounded answer"
+              body="Four engineer personas, each with grounded suggestions tuned to the role. Streaming tokens, inline citation pills, and the Actian inspector at the bottom of every answer."
+            />
+            <ScreenCard
+              src="/screens/actian_payload.png"
+              title="The Actian inspector, expanded"
+              body="One click reveals the path (vector search, RRF, cache, or general), vectors used, hits returned with top score, the latency split between Actian and the BM25 rerank, the actual operation pseudocode, and a chip cloud of every Actian primitive in play."
+            />
+          </div>
+          <div className="mt-6">
+            <ScreenCard
+              src="/screens/citations_plus_vector_data.png"
+              title="Citations resolve to real source PDFs"
+              wide
+              body="Each [source:N] pill is an entity_id. Click it and the source PDF slides in on the right at the cited page with the cited phrase highlighted."
+            />
+          </div>
+
+          <div className="mt-12 mb-3 flex items-baseline gap-3">
+            <h3 className="font-display text-2xl tracking-tight">
+              Live fusion mode toggle, <span className="italic text-accent">RRF or DBSF.</span>
+            </h3>
+          </div>
+          <p className="text-[15px] text-ink/65 max-w-2xl mb-6">
+            Switch Actian's fusion mode mid-session. Every query is routed through <code className="font-mono text-[13px] bg-ink/5 px-1 rounded">points.query(prefetch=[...], query={`{fusion: ...}`})</code>. The Inspector reflects the mode you picked.
+          </p>
+          <div className="grid lg:grid-cols-2 gap-6">
+            <ScreenCard
+              src="/screens/rpf.png"
+              title="RRF (Reciprocal Rank Fusion)"
+              body="The default. Server-side ranks across every named vector are combined by 1/(k+rank). Robust when individual scores vary in scale."
+            />
+            <ScreenCard
+              src="/screens/dbsf.png"
+              title="DBSF (Distribution-Based Score Fusion)"
+              body="Normalises score distributions across vectors before fusing. Sharper differentiation when one vector dominates the candidate pool."
+            />
+          </div>
+        </div>
+      </section>
+
+      {/* ─── Product features ─── */}
+      <section id="features" className="relative z-10 border-t border-ink/8">
+        <div className="max-w-6xl mx-auto px-6 md:px-10 py-24">
+          <SectionLabel icon={<Sparkles size={11} />}>What's inside</SectionLabel>
+          <h2 className="font-display text-4xl md:text-6xl leading-[1.05] tracking-tight max-w-4xl mb-3">
+            Small details, all the way down.
+          </h2>
+          <p className="text-[17px] text-ink/70 max-w-2xl mb-14">
+            Built for someone who uses this for hours, not a tester clicking through a demo.
+          </p>
+
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {FEATURES.map((f) => (
+              <div
+                key={f.title}
+                className="rounded-2xl border border-ink/10 bg-white p-6 hover:border-accent/30 transition-colors"
+              >
+                <div className="flex items-center gap-2 text-accent mb-3">
+                  {f.icon}
+                  <span className="font-mono text-[10.5px] uppercase tracking-[0.12em]">
+                    {f.kicker}
+                  </span>
+                </div>
+                <div className="font-display text-xl tracking-tight mb-2">{f.title}</div>
+                <p className="text-[13.5px] text-ink/65 leading-relaxed">{f.body}</p>
               </div>
             ))}
           </div>
@@ -463,6 +562,38 @@ function BigClaim({
   );
 }
 
+function ScreenCard({
+  src,
+  title,
+  body,
+  wide = false,
+}: {
+  src: string;
+  title: string;
+  body: string;
+  wide?: boolean;
+}) {
+  return (
+    <figure
+      className={
+        "rounded-2xl border border-ink/10 bg-white overflow-hidden shadow-[0_8px_40px_-20px_rgba(10,10,11,0.18)] hover:shadow-[0_12px_60px_-20px_rgba(255,106,38,0.20)] transition-shadow"
+      }
+    >
+      <div className="bg-gradient-to-br from-surface to-white p-4 border-b border-ink/8">
+        <img
+          src={src}
+          alt={title}
+          className={"w-full h-auto rounded-lg " + (wide ? "max-h-[420px] object-cover object-top" : "")}
+        />
+      </div>
+      <figcaption className="p-6">
+        <div className="font-display text-xl mb-1.5">{title}</div>
+        <p className="text-[14px] text-ink/65 leading-relaxed">{body}</p>
+      </figcaption>
+    </figure>
+  );
+}
+
 function Headline({ kicker, line }: { kicker: string; line: string }) {
   return (
     <div className="rounded-xl border border-ink/8 bg-white p-5">
@@ -519,8 +650,8 @@ const PIPELINE = [
   },
   {
     title: "Retrieve",
-    body: "Server-side RRF fusion + client-side hybrid rerank with code-aware regex.",
-    items: ["3-tier hybrid", "RRF + lexical", "Qwen3-4B MLX", "answer cache"],
+    body: "Actian RRF prefetch, then Okapi BM25 rerank with an industrial-code-aware tokenizer.",
+    items: ["3-tier hybrid", "RRF + BM25", "Qwen3-4B MLX", "answer cache 9 ms"],
   },
   {
     title: "Respond",
@@ -577,18 +708,75 @@ const STACK = [
 const DEMO_BEATS = [
   {
     t: "0:30",
-    title: "Tokens stream live",
-    body: "Qwen3-4B generating on the Apple Silicon GPU. Every claim cites a real document by [source:N] pill.",
+    title: "Stream + Inspector",
+    body: "Tokens stream from Qwen3-4B on the Apple Silicon GPU. Below every answer, the Actian inspector shows the path, vectors, hits, and BM25 latency split.",
   },
   {
     t: "1:10",
     title: "Voice. Local.",
-    body: "Whisper turbo transcribes as you speak, partial transcripts in the input field. Kokoro TTS speaks back.",
+    body: "Whisper turbo transcribes as you speak with partials in the input field. Kokoro TTS speaks the answer back. Both on Apple GPU.",
   },
   {
     t: "2:05",
     title: "Pull the cable",
-    body: "Ethernet unplugged on camera. Wi-Fi off. Query still answers, still cites. The airgap holds.",
+    body: "Ethernet unplugged on camera. Wi-Fi off. Query still answers, still cites, Inspector still shows the path. The airgap holds.",
+  },
+];
+
+const FEATURES = [
+  {
+    icon: <Users size={15} />,
+    kicker: "Persona aware",
+    title: "Four engineer roles",
+    body: "New hire, maintenance, quality, plant manager. Each persona has its own grounded suggestion chips and prompt overlay tuned to the questions that role actually asks.",
+  },
+  {
+    icon: <UserCircle size={15} />,
+    kicker: "Personal context",
+    title: "Local user profile",
+    body: "Tell revvec your role, experience, focus, and preferences. Every answer is shaped to you. The profile sits in localStorage and never leaves the machine.",
+  },
+  {
+    icon: <Mic size={15} />,
+    kicker: "Live voice",
+    title: "Partials as you speak",
+    body: "Whisper turbo runs in the background and streams partial transcripts into the input field every 0.6 s. When you stop, the final transcript auto submits.",
+  },
+  {
+    icon: <Search size={15} />,
+    kicker: "Inspector",
+    title: "Every primitive visible",
+    body: "Below every answer: path badge, vectors used, hits with top score, latency split, the actual operation pseudocode, and a chip cloud of every Actian feature in play.",
+  },
+  {
+    icon: <Quote size={15} />,
+    kicker: "Citations",
+    title: "Source PDF panel",
+    body: "[source:N] pills resolve to real entity_ids. Click one and a panel slides in from the right with the cited PDF, scrolled to the cited page, with the cited phrase highlighted.",
+  },
+  {
+    icon: <RefreshCcw size={15} />,
+    kicker: "Cache control",
+    title: "Skip or clear, on demand",
+    body: "A skip-cache toggle on every input bar plus a one-click cache clear in the sidebar. Force fresh generation whenever you need it. The cache itself is a filtered Actian search.",
+  },
+  {
+    icon: <History size={15} />,
+    kicker: "Multi chat",
+    title: "Persistent conversations",
+    body: "Sidebar full of past chats, each with its own persona and history. Follow ups thread through a 6-turn budgeted context window. Stored locally per Mac.",
+  },
+  {
+    icon: <ShieldCheck size={15} />,
+    kicker: "Tamper evidence",
+    title: "Hash chained audit",
+    body: "Every query, cache hit, and forget gets recorded with a SHA-256 chain. Edit one byte of the log and the next /api/admin/audit call returns chain_ok: false.",
+  },
+  {
+    icon: <Zap size={15} />,
+    kicker: "Apple Silicon",
+    title: "MLX native, all of it",
+    body: "Qwen3-4B, Whisper, DINOv2, Chronos-Bolt, Kokoro all run on the Apple GPU via MLX. No Ollama abstraction, no slow CPU fallback, no cloud.",
   },
 ];
 

@@ -78,6 +78,7 @@ class RetrievalAgent:
         prefetch_limit_photo: int = 20,
         prefetch_limit_sensor: int = 20,
         filter_override: Any = None,
+        fusion_mode: str = "rrf",
     ) -> list[RetrievalHit]:
         """One-shot retrieval across all populated named vectors + re-rank."""
         t0 = time.perf_counter()
@@ -118,28 +119,21 @@ class RetrievalAgent:
         if not prefetch:
             return []
 
-        # Stage 1: Actian, either direct search (1 prefetch) or RRF fusion (2+)
-        # Big over-fetch (200+) so post-filter has material to work with.
+        # Stage 1: Actian server side fusion. Always route through points.query
+        # so the user-chosen Fusion mode (RRF or DBSF) is exercised, even with
+        # one prefetch (single-vector text queries). With 2+ prefetches the
+        # mode genuinely re-ranks across vectors; with 1 prefetch it is a
+        # pass-through but the fusion API is still being called.
         t_stage1 = time.perf_counter()
         over_fetch = max(200, limit * 40)
-        if len(prefetch) == 1:
-            pf = prefetch[0]
-            hits = self.client.points.search(
-                self.collection,
-                vector=pf.query,
-                using=pf.using,
-                limit=over_fetch,
-                with_payload=True,
-                score_threshold=-1.0,
-            )
-        else:
-            hits = self.client.points.query(
-                self.collection,
-                prefetch=prefetch,
-                query={"fusion": Fusion.RRF},
-                limit=over_fetch,
-                with_payload=True,
-            )
+        fusion = Fusion.DBSF if fusion_mode.lower() == "dbsf" else Fusion.RRF
+        hits = self.client.points.query(
+            self.collection,
+            prefetch=prefetch,
+            query={"fusion": fusion},
+            limit=over_fetch,
+            with_payload=True,
+        )
 
         # Client-side filter: state="active", entity_type in allowed set
         allowed_types = set(DEFAULT_CONTENT_ENTITY_TYPES)

@@ -40,6 +40,12 @@ Citations resolve to real `entity_id`s. Click an orange pill and the source PDF 
 
 ![citations and inspector](utils/citations_plus_vector_data.png)
 
+Live fusion mode toggle. Every query is routed through `points.query(prefetch=[...], query={fusion: ...})`. Switch between RRF and DBSF mid-session and the Inspector reflects the mode you picked.
+
+![RRF fusion mode](utils/rpf.png)
+
+![DBSF fusion mode](utils/dbsf.png)
+
 ## Run it
 
 ```bash

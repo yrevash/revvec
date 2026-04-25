@@ -219,6 +219,7 @@ class QueryRequest(BaseModel):
     use_cache: bool = True
     history: list[HistoryTurn] | None = None
     user_profile: UserProfile | None = None
+    fusion_mode: str = "rrf"  # "rrf" or "dbsf"
 
 
 def _profile_dict(p: UserProfile | None) -> dict[str, str] | None:
@@ -331,7 +332,7 @@ async def query_endpoint(req: QueryRequest) -> dict[str, Any]:
 
     # 2) retrieve
     t0 = time.perf_counter()
-    hits = state.retrieval.retrieve(query_text=req.query_text, persona=req.persona, limit=req.limit)
+    hits = state.retrieval.retrieve(query_text=req.query_text, persona=req.persona, limit=req.limit, fusion_mode=req.fusion_mode)
     timings["retrieve"] = (time.perf_counter() - t0) * 1000
 
     llm = _ensure_llm()
@@ -378,8 +379,8 @@ async def query_endpoint(req: QueryRequest) -> dict[str, Any]:
                 actian_ms=timings.get("retrieve", 0.0),
                 hits_used=len(hits),
                 top_score=round(top_score, 4) if hits else None,
-                summary="no strong match · model knowledge fallback",
-                operation="points.search(using=text_vec, limit=200) → top score below threshold",
+                summary=f"no strong match · model knowledge fallback · fusion={req.fusion_mode.upper()}",
+                operation=f"points.query(prefetch=[text_vec], query={{fusion: {req.fusion_mode.upper()}}}) → top score below threshold",
             ),
         }
 
@@ -419,8 +420,8 @@ async def query_endpoint(req: QueryRequest) -> dict[str, Any]:
             actian_ms=timings.get("retrieve", 0.0),
             hits_used=len(hits),
             top_score=round(top_score, 4),
-            summary=f"single-vector search · {len(hits)} chunks · BM25 rerank",
-            operation="points.search(using=text_vec, limit=200) → stage 2: Okapi BM25 (industrial-code-aware tokenizer), 0.7·cosine + 0.3·BM25",
+            summary=f"{req.fusion_mode.upper()} fusion · {len(hits)} chunks · BM25 rerank",
+            operation=f"points.query(prefetch=[text_vec], query={{fusion: {req.fusion_mode.upper()}}}, limit=200) → BM25 rerank (industrial-code tokenizer), 0.7·cosine + 0.3·BM25",
         ),
     }
     state.audit.record({
@@ -720,7 +721,7 @@ async def query_stream(req: QueryRequest) -> StreamingResponse:
 
         # retrieve
         t0 = time.perf_counter()
-        hits = state.retrieval.retrieve(query_text=req.query_text, persona=req.persona, limit=req.limit)
+        hits = state.retrieval.retrieve(query_text=req.query_text, persona=req.persona, limit=req.limit, fusion_mode=req.fusion_mode)
         timings["retrieve"] = (time.perf_counter() - t0) * 1000
 
         top_score = hits[0].score_semantic if hits else 0.0
@@ -734,14 +735,14 @@ async def query_stream(req: QueryRequest) -> StreamingResponse:
             hits_used=len(hits),
             top_score=round(top_score, 4) if hits else None,
             summary=(
-                "no strong match · model knowledge fallback"
+                f"no strong match · model knowledge fallback · fusion={req.fusion_mode.upper()}"
                 if weak else
-                f"single-vector search · {len(hits)} chunks · BM25 rerank"
+                f"{req.fusion_mode.upper()} fusion · {len(hits)} chunks · BM25 rerank"
             ),
             operation=(
-                "points.search(using=text_vec, limit=200) → top score below threshold"
+                f"points.query(prefetch=[text_vec], query={{fusion: {req.fusion_mode.upper()}}}) → top score below threshold"
                 if weak else
-                "points.search(using=text_vec, limit=200) → stage 2: Okapi BM25 (industrial-code-aware tokenizer), 0.7·cosine + 0.3·BM25"
+                f"points.query(prefetch=[text_vec], query={{fusion: {req.fusion_mode.upper()}}}, limit=200) → BM25 rerank (industrial-code tokenizer), 0.7·cosine + 0.3·BM25"
             ),
         )
         yield _sse({

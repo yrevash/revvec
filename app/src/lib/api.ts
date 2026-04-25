@@ -222,6 +222,7 @@ export async function streamQuery(
     history?: HistoryTurn[];
     user_profile?: UserProfile;
     use_cache?: boolean;
+    fusion_mode?: "rrf" | "dbsf";
   },
   handlers: StreamHandlers,
   signal?: AbortSignal,

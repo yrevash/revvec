@@ -72,6 +72,7 @@ export default function App() {
   const [profile, setProfile] = useState<UserProfile>(() => loadProfile());
   const [profileOpen, setProfileOpen] = useState(false);
   const [skipCache, setSkipCache] = useState(false);
+  const [fusionMode, setFusionMode] = useState<"rrf" | "dbsf">("rrf");
   const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
@@ -176,6 +177,7 @@ export default function App() {
           history,
           user_profile: userProfile,
           use_cache: !skipCache,
+          fusion_mode: fusionMode,
         },
         {
           onStart: (m) =>
@@ -409,6 +411,31 @@ export default function App() {
                   />
                   skip cache
                 </label>
+                <span className="flex items-center gap-1">
+                  fusion
+                  <button
+                    onClick={() => setFusionMode("rrf")}
+                    className={
+                      "px-1.5 py-[1px] rounded border text-[10px] transition-colors " +
+                      (fusionMode === "rrf"
+                        ? "bg-accent text-white border-accent"
+                        : "border-ink/15 hover:border-ink/30 text-ink/60")
+                    }
+                  >
+                    RRF
+                  </button>
+                  <button
+                    onClick={() => setFusionMode("dbsf")}
+                    className={
+                      "px-1.5 py-[1px] rounded border text-[10px] transition-colors " +
+                      (fusionMode === "dbsf"
+                        ? "bg-accent text-white border-accent"
+                        : "border-ink/15 hover:border-ink/30 text-ink/60")
+                    }
+                  >
+                    DBSF
+                  </button>
+                </span>
               </span>
               <span className="flex items-center gap-1.5 flex-shrink-0">
                 <span className="w-1 h-1 rounded-full bg-green-500" />
