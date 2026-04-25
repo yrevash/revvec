@@ -96,6 +96,31 @@ class LLMAgent:
         return base
 
     @staticmethod
+    def _apply_user_profile(system: str, profile: dict[str, str] | None) -> str:
+        """Append a USER CONTEXT block to the system prompt.
+
+        Only fields with a non-empty string value are included. Returns the
+        original system prompt unchanged if the profile is empty or missing.
+        """
+        if not profile:
+            return system
+        rows: list[str] = []
+        for k in ("role", "experience", "focus", "preferences", "notes"):
+            v = profile.get(k)
+            if isinstance(v, str) and v.strip():
+                rows.append(f"- {k}: {v.strip()}")
+        if not rows:
+            return system
+        return (
+            system
+            + "\n\nUSER CONTEXT (the user told us about themselves):\n"
+            + "\n".join(rows)
+            + "\n\nWhen relevant, tailor the answer to this user's role and "
+            "background. Do not invent details not in the local sources, but "
+            "emphasize parts of the answer most useful to them."
+        )
+
+    @staticmethod
     def _history_messages(
         history: Sequence[dict[str, str]] | None,
         *,
@@ -156,6 +181,7 @@ class LLMAgent:
         max_tokens: int = 160,
         temperature: float = 0.0,
         history: Sequence[dict[str, str]] | None = None,
+        user_profile: dict[str, str] | None = None,
     ) -> GenerationResult:
         from mlx_lm import generate as mlx_generate
 
@@ -168,7 +194,9 @@ class LLMAgent:
             )
 
         model, tok = self._load()
-        system_prompt = self.build_system_prompt(persona)
+        system_prompt = self._apply_user_profile(
+            self.build_system_prompt(persona), user_profile
+        )
         context_block, index_map = self.format_context(chunks)
         user_prompt = f"CONTEXT:\n{context_block}\n\nQUESTION: {question}"
 
@@ -204,6 +232,7 @@ class LLMAgent:
         *,
         max_tokens: int = 160,
         history: Sequence[dict[str, str]] | None = None,
+        user_profile: dict[str, str] | None = None,
     ):
         """Yield `(delta_text, is_done, full_text, citations)` tuples.
 
@@ -221,7 +250,9 @@ class LLMAgent:
             return
 
         model, tok = self._load()
-        system = self.build_system_prompt(persona)
+        system = self._apply_user_profile(
+            self.build_system_prompt(persona), user_profile
+        )
         context_block, index_map = self.format_context(chunks)
         user_prompt = f"CONTEXT:\n{context_block}\n\nQUESTION: {question}"
         messages = [
@@ -249,19 +280,21 @@ class LLMAgent:
         *,
         max_tokens: int = 140,
         history: Sequence[dict[str, str]] | None = None,
+        user_profile: dict[str, str] | None = None,
     ):
         """Streaming variant of generate_general — same delta/done contract."""
         from mlx_lm import stream_generate as mlx_stream_generate
 
         model, tok = self._load()
-        system = (
+        system = self._apply_user_profile(
             "You are revvec, an on-device industrial assistant. The local knowledge base "
             "did not contain information relevant to the user's question, so answer briefly "
             "from general knowledge. Begin your reply with '(from model knowledge)' so the "
             "user knows it isn't grounded in their documents. Be concise — 1–2 sentences — "
             "and if the question seems like small talk, greet the user and list a few kinds "
             "of questions revvec CAN answer (e.g., Perseverance MEDA, Mars 2020 EDL, Apollo "
-            "anomalies, CMAPSS engine prognostics)."
+            "anomalies, CMAPSS engine prognostics).",
+            user_profile,
         )
         messages = [
             {"role": "system", "content": system},
@@ -288,6 +321,7 @@ class LLMAgent:
         *,
         max_tokens: int = 160,
         history: Sequence[dict[str, str]] | None = None,
+        user_profile: dict[str, str] | None = None,
     ) -> GenerationResult:
         """Answer conversationally when retrieval finds nothing useful.
 
@@ -297,14 +331,15 @@ class LLMAgent:
         from mlx_lm import generate as mlx_generate
 
         model, tok = self._load()
-        system = (
+        system = self._apply_user_profile(
             "You are revvec, an on-device industrial assistant. The local knowledge base "
             "did not contain information relevant to the user's question, so answer briefly "
             "from general knowledge. Begin your reply with '(from model knowledge)' so the "
             "user knows it isn't grounded in their documents. Be concise — 1–2 sentences — "
             "and if the question seems like small talk, greet the user and list a few kinds "
             "of questions revvec CAN answer (e.g., Perseverance MEDA, Mars 2020 EDL, Apollo "
-            "anomalies, CMAPSS engine prognostics)."
+            "anomalies, CMAPSS engine prognostics).",
+            user_profile,
         )
         messages = [
             {"role": "system", "content": system},

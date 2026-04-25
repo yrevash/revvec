@@ -2,6 +2,7 @@ import { useState } from "react";
 import { FileText, Clock, ChevronRight, Sparkles } from "lucide-react";
 import type { QueryResponse } from "../lib/api";
 import { AnswerBody } from "./AnswerBody";
+import { Inspector } from "./Inspector";
 
 function Latency({ ms, label }: { ms: number | undefined; label: string }) {
   if (ms === undefined) return null;
@@ -55,6 +56,8 @@ export function AnswerCard({
         citations={result.citations}
         onOpenSource={onOpenSource}
       />
+
+      <Inspector result={result} />
 
       {result.citations.length > 0 && (
         <div className="pt-4 border-t border-surface-deep space-y-1.5">

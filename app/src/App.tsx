@@ -6,8 +6,17 @@ import { MicButton } from "./components/MicButton";
 import { ChatSidebar } from "./components/ChatSidebar";
 import { MessageThread } from "./components/MessageThread";
 import { Logo } from "./components/Logo";
+import { UserProfilePanel } from "./components/UserProfilePanel";
 import { health, streamQuery, voiceStream } from "./lib/api";
-import type { Persona, HealthResponse, QueryResponse } from "./lib/api";
+import type { Persona, HealthResponse, QueryResponse, UserProfile } from "./lib/api";
+import {
+  activeProfile,
+  clearProfile,
+  EMPTY_PROFILE,
+  isProfileSet,
+  loadProfile,
+  saveProfile,
+} from "./lib/userProfile";
 import {
   buildHistory,
   loadActiveId,
@@ -60,6 +69,8 @@ export default function App() {
   const [srv, setSrv] = useState<HealthResponse | null>(null);
   const [openEntityId, setOpenEntityId] = useState<string | null>(null);
   const [listening, setListening] = useState(false);
+  const [profile, setProfile] = useState<UserProfile>(() => loadProfile());
+  const [profileOpen, setProfileOpen] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
@@ -154,10 +165,11 @@ export default function App() {
     abortRef.current = ctrl;
 
     const history = buildHistory(priorChat);
+    const userProfile = activeProfile(profile);
 
     try {
       await streamQuery(
-        { query_text: text, persona: priorChat.persona, history },
+        { query_text: text, persona: priorChat.persona, history, user_profile: userProfile },
         {
           onStart: (m) =>
             updateMessage(priorChat.id, asstMsg.id, {
@@ -236,6 +248,8 @@ export default function App() {
         onSelect={(id) => setActiveId(id)}
         onNew={handleNewChat}
         onDelete={handleDeleteChat}
+        onOpenProfile={() => setProfileOpen(true)}
+        profileActive={isProfileSet(profile)}
       />
 
       <div className="flex-1 flex flex-col min-w-0">
@@ -353,6 +367,21 @@ export default function App() {
           onClose={() => setOpenEntityId(null)}
         />
       )}
+
+      <UserProfilePanel
+        open={profileOpen}
+        initial={profile}
+        onClose={() => setProfileOpen(false)}
+        onSave={(next) => {
+          setProfile(next);
+          saveProfile(next);
+          setProfileOpen(false);
+        }}
+        onClear={() => {
+          setProfile({ ...EMPTY_PROFILE });
+          clearProfile();
+        }}
+      />
     </div>
   );
 }

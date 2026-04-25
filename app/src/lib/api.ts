@@ -12,6 +12,25 @@ export interface Citation {
   preview: string;
 }
 
+export interface UserProfile {
+  role?: string;
+  experience?: string;
+  focus?: string;
+  preferences?: string;
+  notes?: string;
+}
+
+export interface ActianInspector {
+  path: "cache" | "search" | "rrf" | "general";
+  vectors: string[];
+  actian_ms: number;
+  rerank_ms: number;
+  hits_used: number;
+  top_score: number | null;
+  summary: string;
+  operation: string;
+}
+
 export interface QueryResponse {
   answer: string;
   citations: Citation[];
@@ -20,6 +39,7 @@ export interface QueryResponse {
   retrieved: number;
   general_mode?: boolean;
   top_score?: number;
+  actian?: ActianInspector;
   timings_ms: {
     cache_lookup: number;
     retrieve?: number;
@@ -64,6 +84,7 @@ export async function health(): Promise<HealthResponse> {
 export async function query(params: {
   query_text: string;
   persona: Persona;
+  user_profile?: UserProfile;
 }): Promise<QueryResponse> {
   return jsonFetch<QueryResponse>("/api/query", {
     method: "POST",
@@ -178,6 +199,7 @@ export interface StreamHandlers {
     general_mode: boolean;
     retrieved: number;
     top_score: number | null;
+    actian?: ActianInspector;
   }) => void;
   onDelta?: (delta: string, accumulated: string) => void;
   onDone?: (final: QueryResponse) => void;
@@ -190,7 +212,12 @@ export interface HistoryTurn {
 }
 
 export async function streamQuery(
-  params: { query_text: string; persona: Persona; history?: HistoryTurn[] },
+  params: {
+    query_text: string;
+    persona: Persona;
+    history?: HistoryTurn[];
+    user_profile?: UserProfile;
+  },
   handlers: StreamHandlers,
   signal?: AbortSignal,
 ): Promise<void> {
@@ -232,6 +259,7 @@ export async function streamQuery(
             general_mode: !!msg.general_mode,
             retrieved: msg.retrieved ?? 0,
             top_score: msg.top_score ?? null,
+            actian: msg.actian,
           });
         } else if (msg.event === "delta") {
           accumulated += msg.text;
@@ -245,6 +273,7 @@ export async function streamQuery(
             retrieved: msg.retrieved ?? 0,
             general_mode: !!msg.general_mode,
             top_score: msg.top_score ?? undefined,
+            actian: msg.actian,
             timings_ms: msg.timings_ms ?? { cache_lookup: 0, total: 0 },
           });
         }

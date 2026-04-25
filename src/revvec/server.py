@@ -204,12 +204,51 @@ class HistoryTurn(BaseModel):
     content: str
 
 
+class UserProfile(BaseModel):
+    role: str | None = None
+    experience: str | None = None
+    focus: str | None = None
+    preferences: str | None = None
+    notes: str | None = None
+
+
 class QueryRequest(BaseModel):
     query_text: str
     persona: str = "maintenance"
     limit: int = 4
     use_cache: bool = True
     history: list[HistoryTurn] | None = None
+    user_profile: UserProfile | None = None
+
+
+def _profile_dict(p: UserProfile | None) -> dict[str, str] | None:
+    if p is None:
+        return None
+    d = {k: (v or "").strip() for k, v in p.model_dump().items() if (v or "").strip()}
+    return d or None
+
+
+def _actian_block(
+    *,
+    path: str,
+    vectors: list[str],
+    actian_ms: float,
+    rerank_ms: float = 0.0,
+    hits_used: int = 0,
+    top_score: float | None = None,
+    summary: str = "",
+    operation: str = "",
+) -> dict[str, Any]:
+    return {
+        "path": path,
+        "vectors": vectors,
+        "actian_ms": round(actian_ms, 1),
+        "rerank_ms": round(rerank_ms, 1),
+        "hits_used": hits_used,
+        "top_score": top_score,
+        "summary": summary,
+        "operation": operation,
+    }
 
 
 # When the top retrieved hit's semantic similarity is below this, we bypass
@@ -240,14 +279,17 @@ async def query_endpoint(req: QueryRequest) -> dict[str, Any]:
     timings: dict[str, float] = {}
     t_total = time.perf_counter()
 
-    # 1) cache lookup — disabled when follow-up history is present so the
-    # cache doesn't bleed a stale one-off answer into a continuing conversation.
+    # 1) cache lookup — disabled when follow-up history OR a user_profile is
+    # present, so the cache doesn't bleed a stale one-off answer into a
+    # continuing conversation or across users with different contexts.
     has_history = bool(req.history)
+    profile = _profile_dict(req.user_profile)
+    has_profile = profile is not None
     q_emb = embedder.embed_text(req.query_text)[0].tolist()
     t0 = time.perf_counter()
     cached = (
         state.cache.lookup(q_emb, req.persona)
-        if (req.use_cache and not has_history)
+        if (req.use_cache and not has_history and not has_profile)
         else None
     )
     timings["cache_lookup"] = (time.perf_counter() - t0) * 1000
@@ -276,6 +318,13 @@ async def query_endpoint(req: QueryRequest) -> dict[str, Any]:
             "persona": req.persona,
             "retrieved": 0,
             "timings_ms": timings,
+            "actian": _actian_block(
+                path="cache",
+                vectors=["text_vec"],
+                actian_ms=timings["cache_lookup"],
+                summary="answer cache hit · cosine ≥ 0.95",
+                operation="points.search(using=text_vec, score_threshold=0.95, filter=entity_type=answer_cache)",
+            ),
         }
 
     # 2) retrieve
@@ -297,6 +346,7 @@ async def query_endpoint(req: QueryRequest) -> dict[str, Any]:
         history_dicts = [h.model_dump() for h in (req.history or [])]
         result = llm.generate_general(
             req.persona, req.query_text, max_tokens=140, history=history_dicts,
+            user_profile=profile,
         )
         timings["generate"] = (time.perf_counter() - t0) * 1000
         timings["total"] = (time.perf_counter() - t_total) * 1000
@@ -320,6 +370,15 @@ async def query_endpoint(req: QueryRequest) -> dict[str, Any]:
             "top_score": round(top_score, 4),
             "general_mode": True,
             "timings_ms": timings,
+            "actian": _actian_block(
+                path="general",
+                vectors=["text_vec"],
+                actian_ms=timings.get("retrieve", 0.0),
+                hits_used=len(hits),
+                top_score=round(top_score, 4) if hits else None,
+                summary="no strong match · model knowledge fallback",
+                operation="points.search(using=text_vec, limit=200) → top score below threshold",
+            ),
         }
 
     # 3) grounded generate
@@ -327,13 +386,13 @@ async def query_endpoint(req: QueryRequest) -> dict[str, Any]:
     history_dicts = [h.model_dump() for h in (req.history or [])]
     result = llm.generate(
         persona=req.persona, question=req.query_text, chunks=hits,
-        max_tokens=160, history=history_dicts,
+        max_tokens=160, history=history_dicts, user_profile=profile,
     )
     timings["generate"] = (time.perf_counter() - t0) * 1000
 
-    # 4) write back to cache (best-effort). Skip for multi-turn so a context-
-    # sensitive answer can't leak into a single-shot lookup later.
-    if not has_history:
+    # 4) write back to cache (best-effort). Skip for multi-turn or when a user
+    # profile is set, so context-sensitive answers can't leak across users.
+    if not has_history and not has_profile:
         try:
             state.cache.write(q_emb, req.persona, req.query_text, result.answer, result.citations)
         except Exception as e:  # noqa: BLE001
@@ -352,6 +411,15 @@ async def query_endpoint(req: QueryRequest) -> dict[str, Any]:
         "top_score": round(top_score, 4),
         "general_mode": False,
         "timings_ms": timings,
+        "actian": _actian_block(
+            path="search",
+            vectors=["text_vec"],
+            actian_ms=timings.get("retrieve", 0.0),
+            hits_used=len(hits),
+            top_score=round(top_score, 4),
+            summary=f"single-vector search · {len(hits)} chunks · client-side hybrid rerank",
+            operation="points.search(using=text_vec, limit=200) → 0.7·semantic + 0.3·lexical rerank with code-aware regex",
+        ),
     }
     state.audit.record({
         "action": "query",
@@ -597,13 +665,15 @@ async def query_stream(req: QueryRequest) -> StreamingResponse:
         c = _ensure_client()
         embedder = get_embedder()
 
-        # cache lookup — skip when we have history (context-sensitive answer)
+        # cache lookup — skip when we have history or a user_profile.
         has_history = bool(req.history)
+        profile = _profile_dict(req.user_profile)
+        has_profile = profile is not None
         q_emb = embedder.embed_text(req.query_text)[0].tolist()
         t0 = time.perf_counter()
         cached = (
             state.cache.lookup(q_emb, req.persona)
-            if (req.use_cache and not has_history)
+            if (req.use_cache and not has_history and not has_profile)
             else None
         )
         timings["cache_lookup"] = (time.perf_counter() - t0) * 1000
@@ -615,10 +685,18 @@ async def query_stream(req: QueryRequest) -> StreamingResponse:
             except Exception:  # noqa: BLE001
                 cites = []
             timings["total"] = (time.perf_counter() - t_total) * 1000
+            actian = _actian_block(
+                path="cache",
+                vectors=["text_vec"],
+                actian_ms=timings["cache_lookup"],
+                summary="answer cache hit · cosine ≥ 0.95",
+                operation="points.search(using=text_vec, score_threshold=0.95, filter=entity_type=answer_cache)",
+            )
             yield _sse({
                 "event": "start", "persona": req.persona,
                 "from_cache": True, "general_mode": False,
                 "retrieved": 0, "top_score": None,
+                "actian": actian,
             })
             yield _sse({"event": "delta", "text": cached["answer"]})
             yield _sse({
@@ -628,6 +706,7 @@ async def query_stream(req: QueryRequest) -> StreamingResponse:
                 "from_cache": True, "general_mode": False,
                 "retrieved": 0, "top_score": None,
                 "timings_ms": timings,
+                "actian": actian,
             })
             state.audit.record({
                 "action": "query", "persona": req.persona,
@@ -646,10 +725,28 @@ async def query_stream(req: QueryRequest) -> StreamingResponse:
         weak = _is_greeting(req.query_text) or (not hits) or (top_score < GENERAL_FALLBACK_THRESHOLD)
         llm = _ensure_llm()
 
+        actian = _actian_block(
+            path="general" if weak else "search",
+            vectors=["text_vec"],
+            actian_ms=timings.get("retrieve", 0.0),
+            hits_used=len(hits),
+            top_score=round(top_score, 4) if hits else None,
+            summary=(
+                "no strong match · model knowledge fallback"
+                if weak else
+                f"single-vector search · {len(hits)} chunks · client-side hybrid rerank"
+            ),
+            operation=(
+                "points.search(using=text_vec, limit=200) → top score below threshold"
+                if weak else
+                "points.search(using=text_vec, limit=200) → 0.7·semantic + 0.3·lexical rerank with code-aware regex"
+            ),
+        )
         yield _sse({
             "event": "start", "persona": req.persona,
             "from_cache": False, "general_mode": weak,
             "retrieved": len(hits), "top_score": round(top_score, 4),
+            "actian": actian,
         })
 
         t0 = time.perf_counter()
@@ -657,12 +754,12 @@ async def query_stream(req: QueryRequest) -> StreamingResponse:
         stream = (
             llm.stream_generate_general(
                 req.persona, req.query_text,
-                max_tokens=140, history=history_dicts,
+                max_tokens=140, history=history_dicts, user_profile=profile,
             )
             if weak else
             llm.stream_generate_grounded(
                 req.persona, req.query_text, hits,
-                max_tokens=160, history=history_dicts,
+                max_tokens=160, history=history_dicts, user_profile=profile,
             )
         )
         final_answer = ""
@@ -690,10 +787,12 @@ async def query_stream(req: QueryRequest) -> StreamingResponse:
             "from_cache": False, "general_mode": weak,
             "retrieved": len(hits), "top_score": round(top_score, 4),
             "timings_ms": timings,
+            "actian": actian,
         })
 
-        # cache + audit — skip cache write for multi-turn (context-sensitive)
-        if not weak and final_answer and not has_history:
+        # cache + audit — skip cache write for multi-turn or when a user
+        # profile is set (the answer was tailored to this user).
+        if not weak and final_answer and not has_history and not has_profile:
             try:
                 state.cache.write(q_emb, req.persona, req.query_text, final_answer, final_citations)
             except Exception as e:  # noqa: BLE001

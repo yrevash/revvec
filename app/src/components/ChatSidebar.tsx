@@ -1,4 +1,4 @@
-import { Plus, Trash2, MessageSquare } from "lucide-react";
+import { Plus, Trash2, MessageSquare, User } from "lucide-react";
 import type { Chat } from "../lib/chatStore";
 
 function formatAgo(ts: number): string {
@@ -15,12 +15,16 @@ export function ChatSidebar({
   onSelect,
   onNew,
   onDelete,
+  onOpenProfile,
+  profileActive,
 }: {
   chats: Chat[];
   activeId: string | null;
   onSelect: (id: string) => void;
   onNew: () => void;
   onDelete: (id: string) => void;
+  onOpenProfile: () => void;
+  profileActive: boolean;
 }) {
   const sorted = [...chats].sort((a, b) => b.updatedAt - a.updatedAt);
 
@@ -106,8 +110,30 @@ export function ChatSidebar({
           );
         })}
       </div>
-      <div className="px-3 py-2 border-t border-surface-deep/60 text-[10px] text-muted font-mono">
-        {sorted.length} {sorted.length === 1 ? "chat" : "chats"} · local only
+      <div className="border-t border-surface-deep/60">
+        <button
+          onClick={onOpenProfile}
+          className="w-full flex items-center gap-2 px-3 py-2.5 text-[12px] text-ink/80 hover:bg-surface-card/60 transition-colors"
+          title="your profile"
+        >
+          <User
+            size={13}
+            className={profileActive ? "text-accent" : "text-muted"}
+          />
+          <span className="flex-1 text-left">Your profile</span>
+          {profileActive ? (
+            <span className="text-[9px] uppercase tracking-[0.08em] text-accent font-mono">
+              active
+            </span>
+          ) : (
+            <span className="text-[9px] uppercase tracking-[0.08em] text-muted font-mono">
+              not set
+            </span>
+          )}
+        </button>
+        <div className="px-3 py-1.5 text-[10px] text-muted font-mono border-t border-surface-deep/60">
+          {sorted.length} {sorted.length === 1 ? "chat" : "chats"} · local only
+        </div>
       </div>
     </aside>
   );
