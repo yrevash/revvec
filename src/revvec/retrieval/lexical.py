@@ -100,11 +100,61 @@ def hybrid_score(
     semantic_weight: float = 0.7,
     lexical_weight: float = 0.3,
 ) -> float:
-    """0.7 · semantic + 0.3 · lexical (SignalWeave-tested recipe)."""
+    """0.7 cosine + 0.3 keyword overlap. Kept for callers that already have
+    pre-extracted keyword sets; new code should prefer bm25_scores()."""
     return semantic_weight * semantic + lexical_weight * lexical_overlap(query_keywords, doc_keywords)
 
 
-# Thresholds used by RetrievalAgent's Stage-2 filter (SignalWeave-borrowed defaults).
+# ─── BM25 stage 2 ────────────────────────────────────────────────────────────
+# Real Okapi BM25 over the candidate pool returned by Actian stage 1.
+# Tokenisation is industrial-code-aware: codes like SOP-ME-112 or sol 1214
+# survive intact instead of being shredded by a naive tokenizer.
+
+def tokenize_for_bm25(text: str) -> list[str]:
+    """Tokenize while preserving industrial codes."""
+    if not text:
+        return []
+    codes: list[str] = []
+    for pat in _CODE_PATTERNS:
+        for m in pat.finditer(text):
+            codes.append(m.group(0).upper())
+    normalised = re.sub(r"[^\w\s-]", " ", text.lower())
+    words = [
+        tok for tok in normalised.split()
+        if len(tok) >= 3 and tok not in STOPWORDS and not any(c.isdigit() for c in tok)
+    ]
+    return codes + words
+
+
+def bm25_scores(
+    query_text: str,
+    doc_texts: list[str],
+    *,
+    k1: float = 1.5,
+    b: float = 0.75,
+) -> list[float]:
+    """Score every candidate doc against the query with Okapi BM25.
+    Output is min-max normalised to [0, 1] so it combines cleanly with cosine."""
+    if not query_text or not doc_texts:
+        return [0.0] * len(doc_texts)
+    try:
+        from rank_bm25 import BM25Okapi
+    except ImportError:
+        q_kw = extract_keywords(query_text)
+        return [lexical_overlap(q_kw, extract_keywords(d)) for d in doc_texts]
+    tokenized = [tokenize_for_bm25(d) for d in doc_texts]
+    if not any(tokenized):
+        return [0.0] * len(doc_texts)
+    bm25 = BM25Okapi(tokenized, k1=k1, b=b)
+    raw = bm25.get_scores(tokenize_for_bm25(query_text))
+    lo, hi = float(min(raw)), float(max(raw))
+    if hi <= 0:
+        return [0.0] * len(doc_texts)
+    span = hi - lo if hi > lo else 1.0
+    return [max(0.0, (float(s) - lo) / span) for s in raw]
+
+
+# Stage 2 thresholds. Tuned on our golden query set.
 SEMANTIC_MIN = 0.30
 LEXICAL_MIN = 0.10
 FINAL_MIN = 0.35
@@ -115,8 +165,15 @@ def passes_hybrid_threshold(
     query_keywords: set[str],
     doc_keywords: set[str],
 ) -> tuple[bool, float, float]:
-    """Return (passes, lexical_score, final_score) for a (semantic, q_kw, d_kw)."""
+    """Legacy keyword-overlap variant. Returns (passes, lex, final)."""
     lex = lexical_overlap(query_keywords, doc_keywords)
     final = 0.7 * semantic + 0.3 * lex
     passes = (semantic >= SEMANTIC_MIN or lex >= LEXICAL_MIN) and final >= FINAL_MIN
     return passes, lex, final
+
+
+def passes_bm25_threshold(semantic: float, bm25: float) -> tuple[bool, float]:
+    """BM25 variant. Returns (passes, final_score)."""
+    final = 0.7 * semantic + 0.3 * bm25
+    passes = (semantic >= SEMANTIC_MIN or bm25 >= LEXICAL_MIN) and final >= FINAL_MIN
+    return passes, final

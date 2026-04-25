@@ -66,11 +66,35 @@ export function Inspector({ result }: { result: QueryResponse }) {
             k="latency"
             v={
               a.rerank_ms > 0
-                ? `${a.actian_ms.toFixed(0)} ms (Actian) + ${a.rerank_ms.toFixed(0)} ms (rerank)`
+                ? `${a.actian_ms.toFixed(0)} ms (Actian) + ${a.rerank_ms.toFixed(0)} ms (BM25)`
                 : `${a.actian_ms.toFixed(0)} ms`
             }
           />
           <Row k="op" v={a.operation} mono wrap />
+          <div className="pt-2 mt-2 border-t border-surface-deep/60">
+            <div className="text-[9.5px] uppercase tracking-[0.08em] text-muted/70 mb-1.5">
+              Actian features in play
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {[
+                "named vectors",
+                "points.query (RRF prefetch)",
+                "points.search",
+                "FilterBuilder",
+                "set_payload",
+                "score_threshold",
+                "HNSW m=32 ef_construct=256",
+                "vde.open_collection",
+              ].map((f) => (
+                <span
+                  key={f}
+                  className="px-1.5 py-0.5 rounded bg-accent/10 text-accent text-[10px] border border-accent/20"
+                >
+                  {f}
+                </span>
+              ))}
+            </div>
+          </div>
         </div>
       )}
     </div>

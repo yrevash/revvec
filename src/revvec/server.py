@@ -419,8 +419,8 @@ async def query_endpoint(req: QueryRequest) -> dict[str, Any]:
             actian_ms=timings.get("retrieve", 0.0),
             hits_used=len(hits),
             top_score=round(top_score, 4),
-            summary=f"single-vector search · {len(hits)} chunks · client-side hybrid rerank",
-            operation="points.search(using=text_vec, limit=200) → 0.7·semantic + 0.3·lexical rerank with code-aware regex",
+            summary=f"single-vector search · {len(hits)} chunks · BM25 rerank",
+            operation="points.search(using=text_vec, limit=200) → stage 2: Okapi BM25 (industrial-code-aware tokenizer), 0.7·cosine + 0.3·BM25",
         ),
     }
     state.audit.record({
@@ -736,12 +736,12 @@ async def query_stream(req: QueryRequest) -> StreamingResponse:
             summary=(
                 "no strong match · model knowledge fallback"
                 if weak else
-                f"single-vector search · {len(hits)} chunks · client-side hybrid rerank"
+                f"single-vector search · {len(hits)} chunks · BM25 rerank"
             ),
             operation=(
                 "points.search(using=text_vec, limit=200) → top score below threshold"
                 if weak else
-                "points.search(using=text_vec, limit=200) → 0.7·semantic + 0.3·lexical rerank with code-aware regex"
+                "points.search(using=text_vec, limit=200) → stage 2: Okapi BM25 (industrial-code-aware tokenizer), 0.7·cosine + 0.3·BM25"
             ),
         )
         yield _sse({

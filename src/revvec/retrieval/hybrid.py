@@ -24,7 +24,12 @@ from actian_vectorai import (
 from revvec import config
 from revvec.embed.service import EmbedAgent, get_embedder
 from revvec.retrieval.filters import build_persona_filter
-from revvec.retrieval.lexical import extract_keywords, passes_hybrid_threshold
+from revvec.retrieval.lexical import (
+    bm25_scores,
+    extract_keywords,
+    passes_bm25_threshold,
+    passes_hybrid_threshold,
+)
 
 log = logging.getLogger(__name__)
 
@@ -152,23 +157,26 @@ class RetrievalAgent:
         t_stage1_ms = (time.perf_counter() - t_stage1) * 1000
         log.info("stage-1 RRF returned %d hits in %.0f ms", len(hits), t_stage1_ms)
 
-        # Stage 2: hybrid re-rank
+        # Stage 2: hybrid re-rank with real Okapi BM25 over the candidate
+        # pool (industrial-code-aware tokenizer keeps SOP-ME-112 etc intact).
         t_stage2 = time.perf_counter()
-        query_keywords = extract_keywords(query_text) if query_text else set()
         ranked: list[RetrievalHit] = []
-        for h in hits:
-            doc_text = str(h.payload.get("text_preview", ""))
-            title = str(h.payload.get("title", ""))
-            doc_kw = extract_keywords(f"{title} {doc_text}")
-            passes, lex, final = passes_hybrid_threshold(
-                float(h.score), query_keywords, doc_kw,
-            )
+        if query_text and hits:
+            doc_blobs = [
+                f"{h.payload.get('title', '')} {h.payload.get('text_preview', '')}"
+                for h in hits
+            ]
+            bm25_norm = bm25_scores(query_text, doc_blobs)
+        else:
+            bm25_norm = [0.0] * len(hits)
+        for h, bm25 in zip(hits, bm25_norm):
+            passes, final = passes_bm25_threshold(float(h.score), bm25)
             if not passes:
                 continue
             ranked.append(RetrievalHit(
                 id=str(h.id),
                 score_semantic=float(h.score),
-                score_lexical=lex,
+                score_lexical=bm25,  # BM25 normalised to [0, 1]
                 score_final=final,
                 payload=h.payload,
             ))
